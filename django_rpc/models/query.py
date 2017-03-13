@@ -25,18 +25,10 @@ class RpcBaseQuerySet(object):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
         result = client.fetch(opts.app_label, opts.name, self.__trace)
-        return result.__iter__()
-
-
-class RpcQuerySet(RpcBaseQuerySet):
-
-    @queryset_method
-    def filter(self, *args, **kwargs):
-        pass
-
-    @queryset_method
-    def exclude(self, *args, **kwargs):
-        pass
+        for item in result.__iter__():
+            obj = self.model()
+            obj.__dict__.update(item)
+            yield obj
 
     def create(self, *args, **kwargs):
         opts = self.model.Rpc
@@ -47,3 +39,18 @@ class RpcQuerySet(RpcBaseQuerySet):
         result = client.insert(opts.app_label, opts.name, data, fields,
                                return_id=True)
         return result
+
+
+class RpcQuerySet(RpcBaseQuerySet):
+
+    @queryset_method
+    def filter(self, *args, **kwargs):
+        pass
+
+    @queryset_method
+    def all(self, *args, **kwargs):
+        pass
+
+    @queryset_method
+    def exclude(self, *args, **kwargs):
+        pass
