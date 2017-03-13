@@ -6,10 +6,10 @@ from django_rpc.models.utils import queryset_method
 class RpcBaseQuerySet(object):
     """ Django-style реализация конфигуратора запроса к rpc."""
 
-    def __init__(self, **kwargs):
-        self.model = kwargs['model']
+    def __init__(self, model):
+        self.model = model
         self.__trace = ()
-        super(RpcBaseQuerySet, self).__init__(**kwargs)
+        super(RpcBaseQuerySet, self).__init__()
 
     def _trace(self, method, *args, **kwargs):
         clone = self.__class__(model=self.model)
@@ -24,7 +24,7 @@ class RpcBaseQuerySet(object):
     def __iter__(self):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
-        result = client.execute(opts.app_label, opts.name, self.__trace)
+        result = client.fetch(opts.app_label, opts.name, self.__trace)
         return result.__iter__()
 
 

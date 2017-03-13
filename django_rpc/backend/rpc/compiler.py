@@ -1,7 +1,5 @@
 # coding: utf-8
 
-from copy import copy
-from django.conf import settings
 from django.db.models.sql import compiler
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import MULTI
@@ -27,7 +25,7 @@ class RpcSQLCompiler(SQLCompiler):
         elif lazy:  # defer
             all = {f.attname for f in self.query.model._meta.get_fields()}
             kwargs['fields'] = list(set(all) - lazy)
-        results = self.client.execute(
+        results = self.client.fetch(
             rpc.app_label,
             rpc.name,
             self.query.rpc_trace,
@@ -58,10 +56,14 @@ SQLCompiler = RpcSQLCompiler
 
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, RpcSQLCompiler):
+
     def execute_sql(self, return_id=False):
-        # noinspection PyProtectedMember
-        opts = self.query.model._meta
-        results = self.client.fetch.delay(
-            opts.rpc_module,
-            opts.rpc_name,
-            self.query.queryset_trace).get()
+        rpc = self.query.model.Rpc
+        results = self.client.insert(
+            rpc.app_label,
+            rpc.name,
+            self.query.objs,
+            self.query.fields,
+            return_id=return_id,
+            raw=self.query.raw)
+        return results

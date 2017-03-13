@@ -45,9 +45,3 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
         db = 'rpc'
         app_label = None
         name = None
-
-    def save(self):
-        pass
-
-    def delete(self):
-        pass

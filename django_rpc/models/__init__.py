@@ -2,7 +2,7 @@
 
 try:
     from .django import *
-except ImportError:
+except Exception:
     from .base import RpcModel
     from .query import RpcQuerySet
     from .manager import RpcManager

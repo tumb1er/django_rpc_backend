@@ -10,6 +10,3 @@ class ClientModel(DjangoRpcModel):
 
     char_field = models.CharField(max_length=32)
     dt_field = models.DateTimeField()
-
-
-ClientModel.objects.get_queryset()
