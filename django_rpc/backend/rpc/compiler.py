@@ -59,11 +59,21 @@ class SQLInsertCompiler(compiler.SQLInsertCompiler, RpcSQLCompiler):
 
     def execute_sql(self, return_id=False):
         rpc = self.query.model.Rpc
+        rpc_fields = [f.name for f in self.query.fields]
+
+        class Serializer(serializers.ModelSerializer):
+            class Meta:
+                model = self.query.model
+                fields = rpc_fields
+
+        s = Serializer(many=True, instance=self.query.objs)
+        rpc_data = s.data
+
         results = self.client.insert(
             rpc.app_label,
             rpc.name,
-            self.query.objs,
-            self.query.fields,
+            rpc_data,
+            rpc_fields,
             return_id=return_id,
             raw=self.query.raw)
         return results

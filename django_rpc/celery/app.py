@@ -8,9 +8,9 @@ import django
 django.setup()
 
 
-import celery
-
 from .conf import config
+
+import celery
 
 
 celery = celery.Celery()

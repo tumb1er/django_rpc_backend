@@ -37,3 +37,13 @@ class RpcQuerySet(RpcBaseQuerySet):
     @queryset_method
     def exclude(self, *args, **kwargs):
         pass
+
+    def create(self, *args, **kwargs):
+        opts = self.model.Rpc
+        client = RpcClient.from_db(opts.db)
+        assert not args, "args not supported for create"
+        fields = list(kwargs.keys())
+        data = [kwargs]
+        result = client.insert(opts.app_label, opts.name, data, fields,
+                               return_id=True)
+        return result

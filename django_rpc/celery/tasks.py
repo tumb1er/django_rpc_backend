@@ -32,13 +32,19 @@ class FetchTask(celery.Task):
 class InsertTask(celery.Task):
     abstract = True
 
-    def __call__(self, module_name, class_name, objs, fields, return_id=False,
-                 raw=False):
-        model = apps.get_model(module_name, class_name)
-        using = router.db_for_write(model)
-        query = sql.InsertQuery(model)
-        query.insert_values(fields, objs, raw=raw)
-        return query.get_compiler(using=using).execute_sql(return_id)
+    def __call__(self, module_name, class_name, rpc_data, rpc_fields,
+                 return_id=False, raw=False):
+
+        class Serializer(serializers.ModelSerializer):
+            class Meta:
+                fields = rpc_fields
+                model = apps.get_model(module_name, class_name)
+
+        s = Serializer(data=rpc_data, many=True)
+        if s.is_valid(raise_exception=True):
+            result = s.save()
+            if return_id:
+                return result[0].pk
 
 
 @celery.task(base=FetchTask, bind=True, shared=True, name='django_rpc.fetch')

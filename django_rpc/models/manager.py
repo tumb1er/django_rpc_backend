@@ -28,3 +28,7 @@ class RpcManager(RpcManagerBase):
     @manager_method
     def exclude(self, *args, **kwargs):
         pass
+
+    @manager_method
+    def create(self, *args, **kwargs):
+        pass

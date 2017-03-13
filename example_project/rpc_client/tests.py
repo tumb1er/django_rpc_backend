@@ -1,20 +1,23 @@
 import mock
+from celery import Celery
 from django.conf import settings
 from django.test import TestCase
 from django.utils.timezone import now
 
+from django_rpc.celery.client import RpcClient
+from django_rpc.celery import tasks
+from django_rpc.celery.conf import settings as rpc_settings
 from rpc_client.models import ClientModel
 from rpc_server.models import ServerModel
 
 
-# noinspection PyUnresolvedReferences
-@mock.patch.dict(settings.DATABASES['rpc'], {'CELERY_ALWAYS_EAGER': True})
 class BaseRpcClientTestCase(TestCase):
 
     def setUp(self):
         self.server = ServerModel.objects.create(char_field='first')
 
         self.model = ClientModel
+        self.client = RpcClient.from_db(ClientModel.Rpc.db)
 
     def assertObjectsEqual(self, o1, o2):
         del o1._state

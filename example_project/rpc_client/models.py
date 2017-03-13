@@ -8,5 +8,5 @@ class ClientModel(DjangoRpcModel):
         app_label = 'rpc_server'
         name = 'ServerModel'
 
-    char_field = models.CharField(max_length=32)
+    char_field = models.CharField(max_length=32, blank=True)
     dt_field = models.DateTimeField()

@@ -1,7 +1,16 @@
 # coding: utf-8
 import celery
+from copy import copy
 
+from django_rpc.celery import defaults
 from django_rpc.celery.conf import settings
+
+
+def task(app, name):
+    def nope(*args, **kwargs):
+        pass
+
+    return app.task(name=name)(nope)
 
 
 class RpcClient(object):
@@ -10,11 +19,19 @@ class RpcClient(object):
     def __init__(self, config):
         app = celery.Celery()
         app.config_from_object(config)
-        app.autodiscover_tasks(['django_rpc.celery'], force=True)
+        app.autodiscover_tasks(['django_rpc.celery'])
+        for name in 'django_rpc.fetch', 'django_rpc.insert':
+            if name not in app.tasks:
+                task(app, name)
         self._app = app
 
-        self._insert = app.tasks['django_rpc.insert']
-        self._fetch = app.tasks['django_rpc.fetch']
+    @property
+    def _insert(self):
+        return self._app.tasks['django_rpc.insert']
+
+    @property
+    def _fetch(self):
+        return self._app.tasks['django_rpc.fetch']
 
     def fetch(self, app_label, name, trace):
         return self._fetch.delay(app_label, name, trace).get()
