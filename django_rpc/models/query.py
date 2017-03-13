@@ -1,4 +1,5 @@
 # coding: utf-8
+
 from django_rpc.celery.client import RpcClient
 from django_rpc.models.utils import queryset_method
 
@@ -39,6 +40,17 @@ class RpcBaseQuerySet(object):
         result = client.insert(opts.app_label, opts.name, data, fields,
                                return_id=True)
         return result
+
+    def get_or_create(self, *args, **kwargs):
+        rpc = self.model.Rpc
+        client = RpcClient.from_db(rpc.db)
+        assert not args, "args not supported for create"
+        data, created = client.get_or_create(
+            rpc.app_label, rpc.name, **kwargs)
+        instance = self.model()
+        instance.__dict__.update(data)
+
+        return instance, created
 
 
 class RpcQuerySet(RpcBaseQuerySet):

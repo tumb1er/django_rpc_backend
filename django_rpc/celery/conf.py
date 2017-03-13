@@ -22,7 +22,7 @@ class RpcSettings(object):
     def __init__(self, DATABASES=None):
         databases = {}
         for name, db in (DATABASES or {}).items():
-            if db.get('ENGINE') != 'django_rpc.backend.rpc':
+            if db.get('ENGINE') != defaults.ENGINE:
                 continue
             conf = _merge_dict(db)
             databases[name] = conf
