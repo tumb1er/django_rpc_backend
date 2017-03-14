@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from django_rpc.celery import defaults
 from django_rpc.celery.client import RpcClient
-from django_rpc.models import base
+from django_rpc.models import base, utils
 from django_rpc.models.query import RpcQuerySet
 
 
@@ -37,6 +37,10 @@ class DjangoRpcQuerySet(models.QuerySet, RpcQuerySet):
     def iterator(self):
         self.query.rpc_trace = self.rpc_trace
         return super(DjangoRpcQuerySet, self).iterator()
+
+    @utils.single_object_method
+    def get(self, *args, **kwargs):
+        pass
 
     def get_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"

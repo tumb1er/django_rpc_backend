@@ -1,0 +1,18 @@
+[
+  {
+    "model": "rpc_server.servermodel",
+    "pk": 1,
+    "fields": {
+      "char_field": "first",
+      "int_field": 1
+    }
+  },
+  {
+    "model": "rpc_server.servermodel",
+    "pk": 2,
+    "fields": {
+      "char_field": "second",
+      "int_field": 2
+    }
+  }
+]

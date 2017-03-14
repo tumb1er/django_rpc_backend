@@ -9,4 +9,4 @@ class ClientModel(DjangoRpcModel):
         name = 'ServerModel'
 
     char_field = models.CharField(max_length=32, blank=True)
-    dt_field = models.DateTimeField()
+    int_field = models.IntegerField()
