@@ -10,6 +10,40 @@ def queryset_method(func):
     return inner
 
 
+def single_object_method(func):
+    @functools.wraps(func)
+    def inner(self, *args, **kwargs):
+        qs = self._clone()
+        # noinspection PyProtectedMember
+        qs._trace(func.__name__, *args, **kwargs)
+        obj = next(iter(qs))
+        return obj
+    inner._is_queryset_method = True
+    return inner
+
+
+def value_method(func):
+    @functools.wraps(func)
+    def inner(self, *args, **kwargs):
+        qs = self._clone()
+        # noinspection PyProtectedMember
+        qs._trace(func.__name__, *args, **kwargs)
+        qs._return_native = True
+        obj = next(iter(qs))
+        return obj
+    inner._is_queryset_method = True
+    return inner
+
+
+def values_queryset_method(func):
+    @functools.wraps(func)
+    def inner(self, *args, **kwargs):
+        qs = self._trace(func.__name__, *args, **kwargs)
+        qs._return_native = True
+    inner._is_queryset_method = True
+    return inner
+
+
 def rpc_method(func):
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
