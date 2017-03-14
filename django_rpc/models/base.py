@@ -22,6 +22,15 @@ class RpcModelBase(type):
             pass
         return new
 
+    def __call__(self, *args, **kwargs):
+        obj = super().__call__(*args)
+        rpc = obj.Rpc
+        if not hasattr(obj, rpc.pk_field):
+            setattr(obj, rpc.pk_field, None)
+        for k, v in kwargs.items():
+            setattr(obj, k, v)
+        return obj
+
     @staticmethod
     def init_rpc_meta(name, bases, attrs):
         if not bases:
@@ -29,8 +38,10 @@ class RpcModelBase(type):
         rpc = attrs.get('Rpc')
         assert rpc is not None, S_MUST_DEFINE_RPC_CLASS % name
 
-        if not hasattr(rpc, 'db'):
-            rpc.db = 'rpc'
+        base_rpc = bases[0].Rpc
+        for attr in 'db', 'pk_field':
+            if not hasattr(rpc, attr):
+                setattr(rpc, attr, getattr(base_rpc, attr))
 
         for attr in 'db', 'app_label', 'name':
             assert getattr(rpc, attr, None), \
@@ -45,3 +56,14 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
         db = 'rpc'
         app_label = None
         name = None
+        pk_field = 'id'
+    #
+    # @property
+    # def pk(self):
+    #     """ Naive Django primary key fetching."""
+    #     return getattr(self, self.Rpc.pk_field, None)
+    #
+    # @pk.setter
+    # def pk(self, value):
+    #     setattr(self, self)
+

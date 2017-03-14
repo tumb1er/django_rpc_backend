@@ -28,13 +28,17 @@ class RpcBaseQuerySet(object):
         return self.__trace
 
     def __iter__(self):
-        opts = self.model.Rpc
-        client = RpcClient.from_db(opts.db)
-        result = client.fetch(opts.app_label, opts.name, self.__trace)
+        result = self._fetch()
         for item in result.__iter__():
             obj = self.model()
             obj.__dict__.update(item)
             yield obj
+
+    def _fetch(self):
+        opts = self.model.Rpc
+        client = RpcClient.from_db(opts.db)
+        result = client.fetch(opts.app_label, opts.name, self.__trace)
+        return result
 
     def create(self, *args, **kwargs):
         opts = self.model.Rpc
@@ -45,6 +49,15 @@ class RpcBaseQuerySet(object):
         result = client.insert(opts.app_label, opts.name, data, fields,
                                return_id=True)
         return result
+
+    def bulk_create(self, objs, batch_size=None):
+        # FIXME: batch_size support
+        opts = self.model.Rpc
+        client = RpcClient.from_db(opts.db)
+        data = [obj.__dict__ for obj in objs]
+        fields = list(data[0].keys())
+        client.insert(opts.app_label, opts.name, data, fields)
+        return objs
 
     def get_or_create(self, *args, **kwargs):
         rpc = self.model.Rpc
@@ -167,8 +180,9 @@ class RpcQuerySet(RpcBaseQuerySet):
     def update_or_create(self, *args, **kwargs):
         pass
 
-    def bulk_create(self, *args, **kwargs):
-        pass
+    # Implemented in base class
+    # def bulk_create(self, *args, **kwargs):
+    #     pass
 
     @utils.value_method
     def count(self, *args, **kwargs):

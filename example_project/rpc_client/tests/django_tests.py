@@ -13,15 +13,15 @@ class DjangoQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
     server_model = ServerModel
     fixtures = ['tests.json']
 
-#
-# class NativeModel(RpcModel):
-#     class Rpc:
-#         app_label = 'rpc_server'
-#         name = 'ServerModel'
-#
-#
-# class NativeQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
-#                              TestCase):
-#     client_model = NativeModel
-#     server_model = ServerModel
-#     fixtures = ['tests.json']
+
+class NativeModel(RpcModel):
+    class Rpc:
+        app_label = 'rpc_server'
+        name = 'ServerModel'
+
+
+class NativeQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
+                             TestCase):
+    client_model = NativeModel
+    server_model = ServerModel
+    fixtures = ['tests.json']

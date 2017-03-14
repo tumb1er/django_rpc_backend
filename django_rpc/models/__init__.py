@@ -2,11 +2,14 @@
 
 try:
     from .django import *
+
+    __all__ = list(django.__all__)
+
 except Exception as e:
-    pass
+    __all__ = []
 
 from .base import RpcModel
 from .query import RpcQuerySet
 from .manager import RpcManager
 
-__all__ = ['RpcModel', 'RpcManager', 'RpcQuerySet'] + django.__all__
+__all__.extend(['RpcModel', 'RpcManager', 'RpcQuerySet'])
