@@ -14,9 +14,13 @@ class RpcBaseQuerySet(object):
         super(RpcBaseQuerySet, self).__init__()
 
     def _trace(self, method, *args, **kwargs):
-        clone = self.__class__(model=self.model)
+        clone = self._clone()
         # noinspection PyTypeChecker
         clone.__trace = self.__trace + ((method, args, kwargs),)
+        return clone
+
+    def _clone(self):
+        clone = self.__class__(model=self.model)
         return clone
 
     @property

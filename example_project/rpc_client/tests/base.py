@@ -1,5 +1,6 @@
 # coding: utf-8
-from django.test import TestCase
+from unittest import TestCase
+
 from typing import Type
 
 
@@ -14,7 +15,7 @@ class BaseRpcTestCase(TestCase):
         __import__('django_rpc.celery.tasks')
 
 
-class QuerySetTestsMixin(object):
+class QuerySetTestsMixin(TestCase):
     client_model = None  # type: Type[RpcModel]
     server_model = None
     """ :type server_model: rpc_server.models.ServerModel"""
@@ -39,7 +40,7 @@ class QuerySetTestsMixin(object):
 
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)
-        s = self.server_model.objects.get(pk=c.pk)
+        s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
 
     def testBulkCreate(self):

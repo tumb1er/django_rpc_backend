@@ -13,6 +13,13 @@ from django_rpc.models import base, utils
 from django_rpc.models.query import RpcQuerySet
 
 
+__all__ = [
+    'DjangoRpcModelBase',
+    'DjangoRpcQuerySet',
+    'DjangoRpcManager',
+    'DjangoRpcModel'
+]
+
 def rpc_enabled(db):
     return settings.DATABASES[db]['ENGINE'] == defaults.ENGINE
 
