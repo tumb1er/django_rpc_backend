@@ -51,8 +51,8 @@ class QuerySetTestsMixin(TestCase):
         self.assertQuerySetEqual(qs, [self.s2, self.s1])
 
     def testDistinct(self):
-        # Требуются условия, при которых возможно получение дублей в sqlite
-        self.skipTest("TBD")
+        # FIXME: Требуются условия, при которых возможно получение дублей
+        self.skipTest("TBD: QuerySet.distinct")
 
     def testValues(self):
         data = list(self.client_model.objects.values('char_field'))
@@ -74,6 +74,10 @@ class QuerySetTestsMixin(TestCase):
         expected = list(self.server_model.objects.values_list(
             'char_field', flat=True))
         self.assertListEqual(data, expected)
+
+    def testDates(self):
+        # FIXME: сериализация DateTime
+        self.skipTest("TBD: QuerySet.dates")
 
     def testExclude(self):
         qs = self.client_model.objects.exclude(pk=self.s1.pk)
