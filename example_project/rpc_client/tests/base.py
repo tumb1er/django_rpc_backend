@@ -42,6 +42,14 @@ class QuerySetTestsMixin(TestCase):
         qs = self.client_model.objects.filter(pk=self.s1.pk)
         self.assertQuerySetEqual(qs, [self.s1])
 
+    def testExclude(self):
+        qs = self.client_model.objects.exclude(pk=self.s1.pk)
+        self.assertQuerySetEqual(qs, [self.s2])
+
+    def testAnnotate(self):
+        # FIXME: Требуются условия, при которых возможно получение дублей
+        self.skipTest("TBD: QuerySet.annotate")
+
     def testOrderBy(self):
         qs = self.client_model.objects.order_by('-pk')
         self.assertQuerySetEqual(qs, [self.s2, self.s1])
@@ -79,9 +87,29 @@ class QuerySetTestsMixin(TestCase):
         # FIXME: сериализация DateTime
         self.skipTest("TBD: QuerySet.dates")
 
-    def testExclude(self):
-        qs = self.client_model.objects.exclude(pk=self.s1.pk)
-        self.assertQuerySetEqual(qs, [self.s2])
+    def testDateTimes(self):
+        # FIXME: сериализация DateTime
+        self.skipTest("TBD: QuerySet.datetimes")
+
+    def testAll(self):
+        qs = self.client_model.objects.all()
+        expected = self.server_model.objects.all()
+        self.assertQuerySetEqual(qs, expected)
+
+    def testSelectRelated(self):
+        # FIXME: сериализация связанных объектов
+        self.skipTest("TBD: QuerySet.select_related")
+
+    def testPrefetchRelated(self):
+        # FIXME: сериализация связанных объектов
+        self.skipTest("TBD: QuerySet.prefetch_related")
+
+    def testExtra(self):
+        qs = self.client_model.objects.extra(select={'some': '%s + %s'},
+                                             select_params=(1, 2))
+        expected = self.server_model.objects.extra(select={'some': '%s + %s'},
+                                             select_params=(1, 2))
+        self.assertQuerySetEqual(qs, expected)
 
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)

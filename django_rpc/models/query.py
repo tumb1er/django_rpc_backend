@@ -9,13 +9,15 @@ class RpcBaseQuerySet(object):
 
     _rpc_cloned = [
         '_return_native',
-        '_field_list'
+        '_field_list',
+        '_extra_fields'
     ]
 
     def __init__(self, model):
         self.model = model
         self.__trace = ()
         self._field_list = ()
+        self._extra_fields = ()
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -50,8 +52,16 @@ class RpcBaseQuerySet(object):
         client = RpcClient.from_db(opts.db)
         result = client.fetch(opts.app_label, opts.name, self.__trace,
                               fields=self._field_list or None,
+                              extra_fields=self._extra_fields,
                               native=self._return_native)
         return result
+
+    def extra(self, *args, **kwargs):
+        qs = self._trace('extra', *args, **kwargs)
+        select = kwargs.get('select')
+        if select:
+            qs._extra_fields = list(select.keys())
+        return qs
 
     def create(self, *args, **kwargs):
         opts = self.model.Rpc
@@ -139,9 +149,9 @@ class RpcQuerySet(RpcBaseQuerySet):
     def datetimes(self, *args, **kwargs):
         pass
 
-    @utils.queryset_method
-    def none(self, *args, **kwargs):
-        pass
+    # Not implemented for NativeClient
+    # def none(self, *args, **kwargs):
+    #     pass
 
     @utils.queryset_method
     def all(self, *args, **kwargs):
@@ -155,9 +165,9 @@ class RpcQuerySet(RpcBaseQuerySet):
     def prefetch_related(self, *args, **kwargs):
         pass
 
-    @utils.queryset_method
-    def extra(self, *args, **kwargs):
-        pass
+    # Implemented in base class
+    # def extra(self, *args, **kwargs):
+    #     pass
 
     @utils.queryset_method
     def defer(self, *args, **kwargs):

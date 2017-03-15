@@ -13,10 +13,15 @@ class BaseRpcTask(celery.Task):
     @staticmethod
     def serialize(qs, **kwargs):
 
-        class Serializer(serializers.ModelSerializer):
-            class Meta:
-                model = kwargs.get('model') or qs.model
-                fields = kwargs.get('fields', '__all__')
+        extra_fields = kwargs.get('extra_fields', ())
+
+        class Meta:
+            model = kwargs.get('model') or qs.model
+            fields = kwargs.get('fields', '__all__')
+
+        attrs = {'Meta': Meta}
+        attrs.update({k: serializers.ReadOnlyField() for k in extra_fields})
+        Serializer = type("Serializer", (serializers.ModelSerializer,), attrs)
 
         return Serializer(instance=qs, many=isinstance(qs, QuerySet)).data
 
@@ -24,17 +29,24 @@ class BaseRpcTask(celery.Task):
 class FetchTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace, fields='__all__',
-                 native=False):
-        fields = fields or '__all__'
+                 extra_fields=None, native=False):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
+        if not extra_fields:
+            fields = fields or '__all__'
+        elif fields:
+            fields = fields + extra_fields
+        else:
+            fields = ([f.attname for f in model._meta.fields] +
+                      list(extra_fields))
         for method, args, kwargs in trace:
             qs = getattr(qs, method)(*args, **kwargs)
             if not isinstance(qs, (QuerySet, Model)):
                 return qs
         if native:
             return qs
-        return self.serialize(qs, model=model, fields=fields)
+        return self.serialize(qs, model=model, fields=fields,
+                              extra_fields=extra_fields)
 
 
 class InsertTask(BaseRpcTask):

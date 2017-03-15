@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from django_rpc.celery import defaults
 from django_rpc.celery.client import RpcClient
-from django_rpc.models import base, utils
+from django_rpc.models import base
 from django_rpc.models.query import RpcQuerySet
 
 
@@ -19,6 +19,7 @@ __all__ = [
     'DjangoRpcManager',
     'DjangoRpcModel'
 ]
+
 
 def rpc_enabled(db):
     return settings.DATABASES[db]['ENGINE'] == defaults.ENGINE
@@ -39,9 +40,13 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
     def __init__(self, model=None, query=None, using=None, hints=None):
         RpcQuerySet.__init__(self, model)
-        models.QuerySet.__init__(self, model, query, using, hints)
+        # noinspection PyTypeChecker
+        models.QuerySet.__init__(self, model=model, query=query, using=using,
+                                 hints=hints)
+
     @staticmethod
     def _get_fields(obj):
+        # noinspection PyProtectedMember
         return [f.attname for f in obj._meta.fields]
 
     def get_or_create(self, *args, **kwargs):
