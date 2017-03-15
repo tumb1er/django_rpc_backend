@@ -54,8 +54,9 @@ class RpcClient(object):
         return self._insert.delay(app_label, name, objs, fields,
                                   return_id=return_id, raw=raw).get()
 
-    def get_or_create(self, app_label, name, **kwargs):
-        return self._get_or_create.delay(app_label, name, kwargs).get()
+    def get_or_create(self, app_label, name, kwargs, update=False):
+        return self._get_or_create.delay(app_label, name, kwargs,
+                                         update=update).get()
 
     @classmethod
     def from_db(cls, db):

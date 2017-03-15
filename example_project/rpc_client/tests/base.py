@@ -34,10 +34,6 @@ class QuerySetTestsMixin(TestCase):
         self.s1 = self.server_model.objects.get(pk=1)
         self.s2 = self.server_model.objects.get(pk=2)
 
-    def testGet(self):
-        res = self.client_model.objects.get(pk=self.s1.pk)
-        self.assertObjectsEqual(res, self.s1)
-
     def testFilter(self):
         qs = self.client_model.objects.filter(pk=self.s1.pk)
         self.assertQuerySetEqual(qs, [self.s1])
@@ -169,10 +165,32 @@ class QuerySetTestsMixin(TestCase):
         with self.assertRaises(NotImplementedError):
             self.client_model.objects.raw("SELECT 1")
 
+    def testGet(self):
+        res = self.client_model.objects.get(pk=self.s1.pk)
+        self.assertObjectsEqual(res, self.s1)
+
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)
         s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
+
+    def testGetOrCreate(self):
+        c, created = self.client_model.objects.get_or_create(
+            char_field='first',
+            defaults={'int_field': 1})
+        self.assertFalse(created)
+        self.assertIsInstance(c, self.client_model)
+        self.assertObjectsEqual(c, self.s1)
+
+    def testUpdateOrCreate(self):
+        c, created = self.client_model.objects.update_or_create(
+            char_field='first',
+            defaults={'int_field': 10})
+        self.assertFalse(created)
+        self.assertIsInstance(c, self.client_model)
+        s1 = self.server_model.objects.get(pk=self.s1.pk)
+        self.assertEqual(s1.int_field, 10)
+        self.assertObjectsEqual(c, s1)
 
     def testBulkCreate(self):
         server_count = self.server_model.objects.count()
@@ -188,14 +206,6 @@ class QuerySetTestsMixin(TestCase):
         s3.id = None
         self.assertObjectsEqual(c2, s2)
         self.assertObjectsEqual(c3, s3)
-
-    def testGetOrCreate(self):
-        c, created = self.client_model.objects.get_or_create(
-            char_field='first',
-            defaults={'int_field': 1})
-        self.assertFalse(created)
-        self.assertIsInstance(c, self.client_model)
-        self.assertObjectsEqual(c, self.s1)
 
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)

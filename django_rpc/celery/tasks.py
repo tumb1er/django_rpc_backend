@@ -76,10 +76,13 @@ class InsertTask(BaseRpcTask):
 
 class GetOrCreateTask(BaseRpcTask):
 
-    def __call__(self, module_name, class_name, kwargs):
+    def __call__(self, module_name, class_name, kwargs, update=False):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
-        obj, created = qs.get_or_create(**kwargs)
+        if update:
+            obj, created = qs.update_or_create(**kwargs)
+        else:
+            obj, created = qs.get_or_create(**kwargs)
 
         data = self.serialize(obj, model=model)
         return data, created

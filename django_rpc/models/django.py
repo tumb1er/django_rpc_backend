@@ -62,7 +62,33 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         rpc = self.model.Rpc
         client = RpcClient.from_db(rpc.db)
         data, created = client.get_or_create(
-            rpc.app_label, rpc.name, **kwargs)
+            rpc.app_label, rpc.name, kwargs)
+
+        class Serializer(serializers.ModelSerializer):
+            class Meta:
+                model = self.model
+                fields = '__all__'
+
+        # noinspection PyProtectedMember
+        opts = self.model._meta
+        s = Serializer()
+        s.fields[opts.pk.attname].read_only = False
+
+        instance = self.model()
+        instance.__dict__.update(s.to_internal_value(data))
+
+        return instance, created
+
+    def update_or_create(self, *args, **kwargs):
+        assert not args, "args not supported for create"
+        db = router.db_for_write(self.model)
+        if not rpc_enabled(db):
+            return models.QuerySet.update_or_create(self, **kwargs)
+
+        rpc = self.model.Rpc
+        client = RpcClient.from_db(rpc.db)
+        data, created = client.get_or_create(
+            rpc.app_label, rpc.name, kwargs, update=True)
 
         class Serializer(serializers.ModelSerializer):
             class Meta:

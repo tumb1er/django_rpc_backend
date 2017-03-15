@@ -129,7 +129,18 @@ class RpcBaseQuerySet(object):
         client = RpcClient.from_db(rpc.db)
         assert not args, "args not supported for create"
         data, created = client.get_or_create(
-            rpc.app_label, rpc.name, **kwargs)
+            rpc.app_label, rpc.name, kwargs)
+        instance = self.model()
+        instance.__dict__.update(data)
+
+        return instance, created
+
+    def update_or_create(self, *args, **kwargs):
+        rpc = self.model.Rpc
+        client = RpcClient.from_db(rpc.db)
+        assert not args, "args not supported for create"
+        data, created = client.get_or_create(
+            rpc.app_label, rpc.name, kwargs, update=True)
         instance = self.model()
         instance.__dict__.update(data)
 
@@ -240,16 +251,11 @@ class RpcQuerySet(RpcBaseQuerySet):
     def create(self, *args, **kwargs):
         pass
 
-    # Implemented in base class
-    # def get_or_create(self, *args, **kwargs):
-    #     pass
+    get_or_create = RpcBaseQuerySet.get_or_create
 
-    def update_or_create(self, *args, **kwargs):
-        pass
+    update_or_create = RpcBaseQuerySet.update_or_create
 
-    # Implemented in base class
-    # def bulk_create(self, *args, **kwargs):
-    #     pass
+    bulk_update = RpcBaseQuerySet.bulk_create
 
     @utils.value_method
     def count(self, *args, **kwargs):
