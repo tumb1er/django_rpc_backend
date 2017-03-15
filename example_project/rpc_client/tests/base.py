@@ -56,10 +56,24 @@ class QuerySetTestsMixin(TestCase):
 
     def testValues(self):
         data = list(self.client_model.objects.values('char_field'))
-        expected = [self.s1, self.s2]
+        expected = list(self.server_model.objects.values('char_field'))
         self.assertEqual(len(data), len(expected))
         for d, e in zip(data, expected):
-            self.assertDictEqual(d, {'char_field': e.char_field})
+            self.assertDictEqual(d, e)
+
+    def testValuesList(self):
+        data = list(self.client_model.objects.values_list('char_field'))
+        expected = list(self.server_model.objects.values_list('char_field'))
+        self.assertEqual(len(data), len(expected))
+        for d, e in zip(data, expected):
+            self.assertTupleEqual(d, e)
+
+    def testValuesListFlat(self):
+        data = list(self.client_model.objects.values_list(
+            'char_field', flat=True))
+        expected = list(self.server_model.objects.values_list(
+            'char_field', flat=True))
+        self.assertListEqual(data, expected)
 
     def testExclude(self):
         qs = self.client_model.objects.exclude(pk=self.s1.pk)

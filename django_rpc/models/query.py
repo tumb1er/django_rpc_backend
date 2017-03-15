@@ -49,14 +49,9 @@ class RpcBaseQuerySet(object):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
         result = client.fetch(opts.app_label, opts.name, self.__trace,
-                              fields=self._field_list or None)
+                              fields=self._field_list or None,
+                              native=self._return_native)
         return result
-
-    def values(self, *args, **kwargs):
-        qs = self._trace('values', *args, **kwargs)
-        qs._field_list = args
-        qs._return_native = True
-        return qs
 
     def create(self, *args, **kwargs):
         opts = self.model.Rpc
@@ -128,10 +123,9 @@ class RpcQuerySet(RpcBaseQuerySet):
     def distinct(self, *args, **kwargs):
         pass
 
-    #
-    # @utils.values_queryset_method
-    # def values(self, *args, **kwargs):
-    #     pass
+    @utils.values_queryset_method
+    def values(self, *args, **kwargs):
+        pass
 
     @utils.values_queryset_method
     def values_list(self, *args, **kwargs):

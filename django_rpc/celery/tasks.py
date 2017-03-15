@@ -23,7 +23,8 @@ class BaseRpcTask(celery.Task):
 
 class FetchTask(BaseRpcTask):
 
-    def __call__(self, module_name, class_name, trace, fields='__all__'):
+    def __call__(self, module_name, class_name, trace, fields='__all__',
+                 native=False):
         fields = fields or '__all__'
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
@@ -31,6 +32,8 @@ class FetchTask(BaseRpcTask):
             qs = getattr(qs, method)(*args, **kwargs)
             if not isinstance(qs, (QuerySet, Model)):
                 return qs
+        if native:
+            return qs
         return self.serialize(qs, model=model, fields=fields)
 
 
