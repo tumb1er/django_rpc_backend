@@ -91,6 +91,10 @@ class QuerySetTestsMixin(TestCase):
         # FIXME: сериализация DateTime
         self.skipTest("TBD: QuerySet.datetimes")
 
+    def testNone(self):
+        with self.assertRaises(NotImplementedError):
+            self.client_model.objects.none()
+
     def testAll(self):
         qs = self.client_model.objects.all()
         expected = self.server_model.objects.all()
@@ -152,6 +156,18 @@ class QuerySetTestsMixin(TestCase):
         expected = self.server_model.objects.defer(
             'char_field').only('char_field')
         self.assertQuerySetEqual(qs, expected)
+
+    def testUsing(self):
+        with self.assertRaises(NotImplementedError):
+            self.client_model.objects.using('some_db')
+
+    def testSelectForUpdate(self):
+        with self.assertRaises(NotImplementedError):
+            self.client_model.objects.select_for_update()
+
+    def testRaw(self):
+        with self.assertRaises(NotImplementedError):
+            self.client_model.objects.raw("SELECT 1")
 
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)

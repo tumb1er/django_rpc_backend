@@ -194,9 +194,9 @@ class RpcQuerySet(RpcBaseQuerySet):
     def datetimes(self, *args, **kwargs):
         pass
 
-    # Not implemented for NativeClient
-    # def none(self, *args, **kwargs):
-    #     pass
+    def none(self, *args, **kwargs):
+        """ useless """
+        raise NotImplementedError()
 
     @utils.queryset_method
     def all(self, *args, **kwargs):
@@ -210,28 +210,23 @@ class RpcQuerySet(RpcBaseQuerySet):
     def prefetch_related(self, *args, **kwargs):
         pass
 
-    # Implemented in base class
-    # def extra(self, *args, **kwargs):
-    #     pass
+    extra = RpcBaseQuerySet.extra
 
-    # Implemented in base class
-    # def defer(self, *args, **kwargs):
-    #     pass
+    defer = RpcBaseQuerySet.defer
 
     only = RpcBaseQuerySet.only
 
-
-    @utils.queryset_method
     def using(self, *args, **kwargs):
-        pass
+        # database change is an rpc server responsibility
+        raise NotImplementedError()
 
-    @utils.queryset_method
     def select_for_update(self, *args, **kwargs):
-        pass
+        # transaction management is an rpc server responsibility
+        raise NotImplementedError()
 
-    @utils.queryset_method
     def raw(self, *args, **kwargs):
-        pass
+        # performing sql queries is an rpc server responsibility
+        raise NotImplementedError()
 
     #
     # methods-that-do-not-return-querysets
