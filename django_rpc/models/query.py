@@ -10,14 +10,16 @@ class RpcBaseQuerySet(object):
     _rpc_cloned = [
         '_return_native',
         '_field_list',
-        '_extra_fields'
+        '_extra_fields',
+        '_exclude_fields'
     ]
 
     def __init__(self, model):
         self.model = model
         self.__trace = ()
-        self._field_list = ()
+        self.__field_list = ()
         self._extra_fields = ()
+        self._exclude_fields = ()
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -37,14 +39,34 @@ class RpcBaseQuerySet(object):
     def rpc_trace(self):
         return self.__trace
 
+    @property
+    def _field_list(self):
+        return self.__field_list
+
+    @_field_list.setter
+    def _field_list(self, value):
+        value = tuple(value)
+        pk_name = self._get_pk_field()
+        if value and pk_name not in value:
+            value += (pk_name,)
+        self.__field_list = value
+
     def __iter__(self):
         result = self._fetch()
+
         for item in result.__iter__():
             if self._return_native:
                 yield item
                 continue
             obj = self.model()
             obj.__dict__.update(item)
+            for f in self._exclude_fields:
+                if hasattr(obj, f):
+                    delattr(obj, f)
+            if self._field_list:
+                for k in list(obj.__dict__.keys()):
+                    if k not in self._field_list:
+                        delattr(obj, k)
             yield obj
 
     def _fetch(self):
@@ -53,6 +75,7 @@ class RpcBaseQuerySet(object):
         result = client.fetch(opts.app_label, opts.name, self.__trace,
                               fields=self._field_list or None,
                               extra_fields=self._extra_fields,
+                              exclude_fields=self._exclude_fields,
                               native=self._return_native)
         return result
 
@@ -60,7 +83,26 @@ class RpcBaseQuerySet(object):
         qs = self._trace('extra', *args, **kwargs)
         select = kwargs.get('select')
         if select:
-            qs._extra_fields = list(select.keys())
+            qs._extra_fields = tuple(select.keys())
+        return qs
+
+    def defer(self, *args, **kwargs):
+        qs = self._trace('defer', *args, **kwargs)
+        if args == (None,):
+            qs._exclude_fields = ()
+        else:
+            qs._exclude_fields += tuple(args)
+        return qs
+
+    def only(self, *args, **kwargs):
+        qs = self._trace('only', *args, **kwargs)
+        if qs._exclude_fields:
+            # This is how django-1.10 works: if query.defer is not empty,
+            # django removes deferred fields from "only-fields"
+            qs._exclude_fields = [f for f in qs._exclude_fields
+                                  if f not in args]
+        else:
+            qs._field_list = args
         return qs
 
     def create(self, *args, **kwargs):
@@ -96,6 +138,9 @@ class RpcBaseQuerySet(object):
     @staticmethod
     def _get_fields(obj):
         return list(obj.__dict__.keys())
+
+    def _get_pk_field(self):
+        return self.model.Rpc.pk_field
 
 
 class RpcQuerySet(RpcBaseQuerySet):
@@ -169,13 +214,12 @@ class RpcQuerySet(RpcBaseQuerySet):
     # def extra(self, *args, **kwargs):
     #     pass
 
-    @utils.queryset_method
-    def defer(self, *args, **kwargs):
-        pass
+    # Implemented in base class
+    # def defer(self, *args, **kwargs):
+    #     pass
 
-    @utils.queryset_method
-    def only(self, *args, **kwargs):
-        pass
+    only = RpcBaseQuerySet.only
+
 
     @utils.queryset_method
     def using(self, *args, **kwargs):

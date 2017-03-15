@@ -31,17 +31,22 @@ class BaseRpcTask(celery.Task):
 
 class FetchTask(BaseRpcTask):
 
-    def __call__(self, module_name, class_name, trace, fields='__all__',
-                 extra_fields=None, native=False):
+    def __call__(self, module_name, class_name, trace, fields=None,
+                 extra_fields=None, exclude_fields=None, native=False):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
-        if not extra_fields:
-            fields = fields or '__all__'
-        elif fields:
-            fields = fields + extra_fields
-        else:
+
+        exclude_fields = list(exclude_fields or ())
+        extra_fields = list(extra_fields or ())
+        fields = list(fields or [])
+
+        if extra_fields or exclude_fields or not fields:
             fields = ([f.attname for f in model._meta.fields] +
                       list(extra_fields))
+
+        fields = [f for f in fields + extra_fields
+                  if f not in exclude_fields] or '__all__'
+
         for method, args, kwargs in trace:
             qs = getattr(qs, method)(*args, **kwargs)
             if not isinstance(qs, (QuerySet, Model)):

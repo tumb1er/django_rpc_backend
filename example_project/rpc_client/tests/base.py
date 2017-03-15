@@ -108,7 +108,49 @@ class QuerySetTestsMixin(TestCase):
         qs = self.client_model.objects.extra(select={'some': '%s + %s'},
                                              select_params=(1, 2))
         expected = self.server_model.objects.extra(select={'some': '%s + %s'},
-                                             select_params=(1, 2))
+                                                   select_params=(1, 2))
+        self.assertQuerySetEqual(qs, expected)
+
+    def testDefer(self):
+        qs = self.client_model.objects.defer('int_field')
+        expected = self.server_model.objects.defer('int_field')
+        self.assertQuerySetEqual(qs, expected)
+
+    def testDeferReset(self):
+        qs = self.client_model.objects.defer('int_field').defer(None)
+        expected = self.server_model.objects.all()
+        self.assertQuerySetEqual(qs, expected)
+
+    def testDeferDefer(self):
+        qs = self.client_model.objects.defer('int_field').defer('char_field')
+        expected = self.server_model.objects.defer(
+            'int_field').defer('char_field')
+        self.assertQuerySetEqual(qs, expected)
+
+    def testOnly(self):
+        qs = self.client_model.objects.only('char_field')
+        expected = self.server_model.objects.only('char_field')
+        self.assertQuerySetEqual(qs, expected)
+
+    def testOnlyOnly(self):
+        qs = self.client_model.objects.only(
+            'char_field', 'int_field').only('char_field')
+        expected = self.server_model.objects.only(
+            'char_field', 'int_field').only('char_field')
+        self.assertQuerySetEqual(qs, expected)
+
+    def testOnlyDefer(self):
+        qs = self.client_model.objects.only(
+            'char_field', 'int_field').defer('char_field')
+        expected = self.server_model.objects.only(
+            'char_field', 'int_field').defer('char_field')
+        self.assertQuerySetEqual(qs, expected)
+
+    def testDeferOnly(self):
+        qs = self.client_model.objects.defer(
+            'char_field').only('char_field')
+        expected = self.server_model.objects.defer(
+            'char_field').only('char_field')
         self.assertQuerySetEqual(qs, expected)
 
     def testCreate(self):

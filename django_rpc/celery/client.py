@@ -39,9 +39,16 @@ class RpcClient(object):
         return self._app.tasks['django_rpc.get_or_create']
 
     def fetch(self, app_label, name, trace, fields=None, extra_fields=None,
-              native=False):
-        return self._fetch.delay(app_label, name, trace, fields=fields,
-                                 extra_fields=extra_fields, native=native).get()
+              exclude_fields=None, native=False):
+        result = self._fetch.delay(
+            app_label,
+            name,
+            trace,
+            fields=fields,
+            extra_fields=extra_fields,
+            exclude_fields=exclude_fields,
+            native=native)
+        return result.get()
 
     def insert(self, app_label, name, objs, fields, return_id=False, raw=False):
         return self._insert.delay(app_label, name, objs, fields,

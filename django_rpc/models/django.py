@@ -49,6 +49,10 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         # noinspection PyProtectedMember
         return [f.attname for f in obj._meta.fields]
 
+    def _get_pk_field(self):
+        # noinspection PyProtectedMember
+        return self.model._meta.pk.attname
+
     def get_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"
         db = router.db_for_write(self.model)
