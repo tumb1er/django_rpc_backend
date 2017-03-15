@@ -1,7 +1,11 @@
 # coding: utf-8
+from collections import namedtuple
 
 from django_rpc.celery.client import RpcClient
 from django_rpc.models import utils
+
+
+Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
 
 class RpcBaseQuerySet(object):
@@ -23,10 +27,11 @@ class RpcBaseQuerySet(object):
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
-    def _trace(self, method, *args, **kwargs):
+    def _trace(self, method, args, kwargs):
         clone = self._clone()
+        new_trace = Trace(method, args, kwargs)
         # noinspection PyTypeChecker
-        clone.__trace = self.__trace + ((method, args, kwargs),)
+        clone.__trace = self.__trace + (new_trace,)
         return clone
 
     def _clone(self):
@@ -80,14 +85,14 @@ class RpcBaseQuerySet(object):
         return result
 
     def extra(self, *args, **kwargs):
-        qs = self._trace('extra', *args, **kwargs)
+        qs = self._trace('extra', args, kwargs)
         select = kwargs.get('select')
         if select:
             qs._extra_fields = tuple(select.keys())
         return qs
 
     def defer(self, *args, **kwargs):
-        qs = self._trace('defer', *args, **kwargs)
+        qs = self._trace('defer', args, kwargs)
         if args == (None,):
             qs._exclude_fields = ()
         else:
@@ -95,7 +100,7 @@ class RpcBaseQuerySet(object):
         return qs
 
     def only(self, *args, **kwargs):
-        qs = self._trace('only', *args, **kwargs)
+        qs = self._trace('only', args, kwargs)
         if qs._exclude_fields:
             # This is how django-1.10 works: if query.defer is not empty,
             # django removes deferred fields from "only-fields"
