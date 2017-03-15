@@ -35,19 +35,14 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
 
 
-class DjangoRpcQuerySet(models.QuerySet, RpcQuerySet):
+class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
     def __init__(self, model=None, query=None, using=None, hints=None):
-        super().__init__(model, query, using, hints)
         RpcQuerySet.__init__(self, model)
-
-    def iterator(self):
-        self.query.rpc_trace = self.rpc_trace
-        return super(DjangoRpcQuerySet, self).iterator()
-
-    @utils.single_object_method
-    def get(self, *args, **kwargs):
-        pass
+        models.QuerySet.__init__(self, model, query, using, hints)
+    @staticmethod
+    def _get_fields(obj):
+        return [f.attname for f in obj._meta.fields]
 
     def get_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"

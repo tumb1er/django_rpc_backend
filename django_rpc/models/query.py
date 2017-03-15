@@ -55,7 +55,7 @@ class RpcBaseQuerySet(object):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
         data = [obj.__dict__ for obj in objs]
-        fields = list(data[0].keys())
+        fields = self._get_fields(objs[0])
         client.insert(opts.app_label, opts.name, data, fields)
         return objs
 
@@ -69,6 +69,10 @@ class RpcBaseQuerySet(object):
         instance.__dict__.update(data)
 
         return instance, created
+
+    @staticmethod
+    def _get_fields(obj):
+        return list(obj.__dict__.keys())
 
 
 class RpcQuerySet(RpcBaseQuerySet):

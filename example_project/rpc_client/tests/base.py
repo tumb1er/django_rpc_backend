@@ -38,6 +38,10 @@ class QuerySetTestsMixin(TestCase):
         res = self.client_model.objects.get(pk=self.s1.pk)
         self.assertObjectsEqual(res, self.s1)
 
+    def testFilter(self):
+        qs = self.client_model.objects.filter(pk=self.s1.pk)
+        self.assertQuerySetEqual(qs, [self.s1])
+
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)
         s = self.server_model.objects.get(pk=c.id)
@@ -65,3 +69,9 @@ class QuerySetTestsMixin(TestCase):
         self.assertFalse(created)
         self.assertIsInstance(c, self.client_model)
         self.assertObjectsEqual(c, self.s1)
+
+    def assertQuerySetEqual(self, qs, expected):
+        result = list(qs)
+        self.assertEqual(len(result), len(expected))
+        for real, exp in zip(result, expected):
+            self.assertObjectsEqual(real, exp)
