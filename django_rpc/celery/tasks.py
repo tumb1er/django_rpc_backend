@@ -21,9 +21,12 @@ class BaseRpcTask(celery.Task):
 
         attrs = {'Meta': Meta}
         attrs.update({k: serializers.ReadOnlyField() for k in extra_fields})
-        Serializer = type("Serializer", (serializers.ModelSerializer,), attrs)
 
-        return Serializer(instance=qs, many=isinstance(qs, QuerySet)).data
+        serializer_class = type("Serializer",
+                                (serializers.ModelSerializer,),
+                                attrs)
+
+        return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
 
 class FetchTask(BaseRpcTask):
