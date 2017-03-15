@@ -7,9 +7,15 @@ from django_rpc.models import utils
 class RpcBaseQuerySet(object):
     """ Django-style реализация конфигуратора запроса к rpc."""
 
+    _rpc_cloned = [
+        '_return_native',
+        '_field_list'
+    ]
+
     def __init__(self, model):
         self.model = model
         self.__trace = ()
+        self._field_list = ()
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -21,6 +27,8 @@ class RpcBaseQuerySet(object):
 
     def _clone(self):
         clone = self.__class__(model=self.model)
+        for f in self._rpc_cloned:
+            setattr(clone, f, getattr(self, f))
         return clone
 
     @property
@@ -30,6 +38,9 @@ class RpcBaseQuerySet(object):
     def __iter__(self):
         result = self._fetch()
         for item in result.__iter__():
+            if self._return_native:
+                yield item
+                continue
             obj = self.model()
             obj.__dict__.update(item)
             yield obj
@@ -37,8 +48,15 @@ class RpcBaseQuerySet(object):
     def _fetch(self):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
-        result = client.fetch(opts.app_label, opts.name, self.__trace)
+        result = client.fetch(opts.app_label, opts.name, self.__trace,
+                              fields=self._field_list or None)
         return result
+
+    def values(self, *args, **kwargs):
+        qs = self._trace('values', *args, **kwargs)
+        qs._field_list = args
+        qs._return_native = True
+        return qs
 
     def create(self, *args, **kwargs):
         opts = self.model.Rpc
@@ -110,9 +128,10 @@ class RpcQuerySet(RpcBaseQuerySet):
     def distinct(self, *args, **kwargs):
         pass
 
-    @utils.values_queryset_method
-    def values(self, *args, **kwargs):
-        pass
+    #
+    # @utils.values_queryset_method
+    # def values(self, *args, **kwargs):
+    #     pass
 
     @utils.values_queryset_method
     def values_list(self, *args, **kwargs):

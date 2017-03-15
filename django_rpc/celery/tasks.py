@@ -24,6 +24,7 @@ class BaseRpcTask(celery.Task):
 class FetchTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace, fields='__all__'):
+        fields = fields or '__all__'
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
         for method, args, kwargs in trace:

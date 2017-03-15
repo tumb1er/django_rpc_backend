@@ -42,6 +42,29 @@ class QuerySetTestsMixin(TestCase):
         qs = self.client_model.objects.filter(pk=self.s1.pk)
         self.assertQuerySetEqual(qs, [self.s1])
 
+    def testOrderBy(self):
+        qs = self.client_model.objects.order_by('-pk')
+        self.assertQuerySetEqual(qs, [self.s2, self.s1])
+
+    def testReverse(self):
+        qs = self.client_model.objects.order_by('pk').reverse()
+        self.assertQuerySetEqual(qs, [self.s2, self.s1])
+
+    def testDistinct(self):
+        # Требуются условия, при которых возможно получение дублей в sqlite
+        self.skipTest("TBD")
+
+    def testValues(self):
+        data = list(self.client_model.objects.values('char_field'))
+        expected = [self.s1, self.s2]
+        self.assertEqual(len(data), len(expected))
+        for d, e in zip(data, expected):
+            self.assertDictEqual(d, {'char_field': e.char_field})
+
+    def testExclude(self):
+        qs = self.client_model.objects.exclude(pk=self.s1.pk)
+        self.assertQuerySetEqual(qs, [self.s2])
+
     def testCreate(self):
         c = self.client_model.objects.create(char_field='test', int_field=1)
         s = self.server_model.objects.get(pk=c.id)

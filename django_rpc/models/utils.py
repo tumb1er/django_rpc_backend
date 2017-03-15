@@ -40,6 +40,7 @@ def values_queryset_method(func):
     def inner(self, *args, **kwargs):
         qs = self._trace(func.__name__, *args, **kwargs)
         qs._return_native = True
+        return qs
     inner._is_queryset_method = True
     return inner
 
