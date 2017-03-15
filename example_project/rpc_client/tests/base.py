@@ -207,6 +207,11 @@ class QuerySetTestsMixin(TestCase):
         self.assertObjectsEqual(c2, s2)
         self.assertObjectsEqual(c3, s3)
 
+    def testCount(self):
+        real = self.client_model.objects.count()
+        expected = self.server_model.objects.count()
+        self.assertEqual(real, expected)
+
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)
         self.assertEqual(len(result), len(expected))

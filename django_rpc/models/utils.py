@@ -23,14 +23,13 @@ def single_object_method(func):
 
 
 def value_method(func):
+    # noinspection PyProtectedMember
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
-        qs = self._clone()
-        # noinspection PyProtectedMember
-        qs._trace(func.__name__, *args, **kwargs)
+        qs = self._trace(func.__name__, *args, **kwargs)
         qs._return_native = True
-        obj = next(iter(qs))
-        return obj
+        result = qs._fetch()
+        return result
     inner._is_queryset_method = True
     return inner
 
