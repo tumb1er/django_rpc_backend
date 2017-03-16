@@ -7,6 +7,8 @@ from rest_framework import serializers
 
 from django_rpc.celery.client import RpcClient
 
+SINGLE_MODEL_UPDATE_SUPPORTED = "single model save only supported"
+
 
 class RpcSQLCompiler(SQLCompiler):
 
@@ -76,4 +78,26 @@ class SQLInsertCompiler(compiler.SQLInsertCompiler, RpcSQLCompiler):
             rpc_fields,
             return_id=return_id,
             raw=self.query.raw)
+        return results
+
+
+class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
+
+    def execute_sql(self, return_id=False):
+        rpc = self.query.model.Rpc
+        where = self.query.where
+        assert len(where.children) == 1, SINGLE_MODEL_UPDATE_SUPPORTED
+        lookup = where.children[0]
+        assert lookup.lookup_name == 'exact', SINGLE_MODEL_UPDATE_SUPPORTED
+        col, pk = lookup.lhs, lookup.rhs
+        assert col.field.primary_key, SINGLE_MODEL_UPDATE_SUPPORTED
+
+        values = {f.attname: v for f, _, v in self.query.values}
+        rpc_fields = tuple(values.keys())
+
+        results = self.client.update(
+            rpc.app_label,
+            rpc.name,
+            values,
+            dict(pk=pk))
         return results

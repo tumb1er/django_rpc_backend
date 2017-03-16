@@ -67,3 +67,26 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
     # def pk(self, value):
     #     setattr(self, self)
 
+    def save(self, force_insert=False, force_update=False, update_fields=None):
+        if update_fields:
+            force_update = True
+
+        pk = getattr(self, self.Rpc.pk_field, None)
+        if pk is None:
+            force_insert = True
+
+        assert not (force_insert and force_update), \
+            "ambiguous force_update + force_insert"
+
+        if update_fields:
+            data = {k: v for k, v in self.__dict__.items()
+                    if k in update_fields}
+        else:
+            data = self.__dict__.copy()
+
+        if force_insert:
+            obj = self.__class__.objects.create(**data)
+            setattr(self, self.Rpc.pk_field, obj.id)
+        else:
+            self.__class__.objects.filter(pk=pk).update(**data)
+

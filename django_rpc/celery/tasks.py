@@ -74,6 +74,14 @@ class InsertTask(BaseRpcTask):
                 return result[0].pk
 
 
+class UpdateTask(BaseRpcTask):
+
+    def __call__(self, module_name, class_name, rpc_data, filters):
+        model = apps.get_model(module_name, class_name)
+
+        return model.objects.filter(**filters).update(**rpc_data)
+
+
 class GetOrCreateTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, kwargs, update=False):
@@ -98,6 +106,12 @@ def insert(*args, **kwargs):
     pass
 
 
-@celery.task(base=GetOrCreateTask, bind=True, shared=True, name='django_rpc.get_or_create')
+@celery.task(base=UpdateTask, bind=True, shared=True, name='django_rpc.update')
+def update(*args, **kwargs):
+    pass
+
+
+@celery.task(base=GetOrCreateTask, bind=True, shared=True,
+             name='django_rpc.get_or_create')
 def get_or_create(*args, **kwargs):
     pass

@@ -268,7 +268,25 @@ class QuerySetTestsMixin(TestCase):
 
     def testAsManager(self):
         m1 = self.client_model.objects.filter(int_field=2).as_manager()
-        self.assertIsInstance(m1, type(self.client_model.objects))
+        qs = self.client_model.objects.get_queryset()
+        self.assertIsInstance(m1.get_queryset(), type(qs))
+
+    # noinspection PyUnresolvedReferences
+    def testModelSaveInsert(self):
+        c = self.client_model(char_field='test', int_field=0)
+        c.save()
+        self.assertIsNotNone(c.id)
+        s = self.server_model.objects.get(pk=c.id)
+        self.assertObjectsEqual(c, s)
+
+    # noinspection PyUnresolvedReferences
+    def testModelSaveUpdate(self):
+        c = self.client_model.objects.get(id=self.s1.id)
+        c.int_field = 100500
+        c.save()
+        s = self.server_model.objects.get(pk=c.id)
+        self.assertEqual(s.int_field, 100500)
+        self.assertObjectsEqual(c, s)
 
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)

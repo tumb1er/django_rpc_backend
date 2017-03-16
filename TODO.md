@@ -6,7 +6,7 @@ QuerySet
 
 - [ ] Полное покрытие QuerySet API
 - [ ] Декораторы для финальных методов QuerySet API (возвращающих объекты)
-- [ ] get_set, create_or_update и подобное расширение функционала QuerySet
+- [ ] get_set etc... - расширение функционала QuerySet
 - [ ] Future
 - [ ] Delayed
 
@@ -19,6 +19,7 @@ Celery
 
 Django
 ------
+- [ ] Методы модели save, delete.
 - [ ] Кэширование сериалайзеров
 - [ ] Переопределение сериалайзера для запроса
 - [ ] rpc call
@@ -31,3 +32,4 @@ Django
 - [ ] Тесты QuerySet API для NativeClient
 - [ ] Тесты QuerySet API для DjangoClient
 - [ ] Тесты RPCModel для выключенного RPC
+- [ ] Тесты с запущенной Celery.

@@ -4,7 +4,12 @@ import celery
 from django_rpc.celery.conf import settings
 
 
-TASKS = 'django_rpc.fetch', 'django_rpc.insert', 'django_rpc.get_or_create'
+TASKS = (
+    'django_rpc.fetch',
+    'django_rpc.insert',
+    'django_rpc.update',
+    'django_rpc.get_or_create'
+)
 
 
 def task(app, name):
@@ -35,6 +40,10 @@ class RpcClient(object):
         return self._app.tasks['django_rpc.fetch']
 
     @property
+    def _update(self):
+        return self._app.tasks['django_rpc.update']
+
+    @property
     def _get_or_create(self):
         return self._app.tasks['django_rpc.get_or_create']
 
@@ -53,6 +62,9 @@ class RpcClient(object):
     def insert(self, app_label, name, objs, fields, return_id=False, raw=False):
         return self._insert.delay(app_label, name, objs, fields,
                                   return_id=return_id, raw=raw).get()
+
+    def update(self, app_label, name, data, filters):
+        return self._update.delay(app_label, name, data, filters).get()
 
     def get_or_create(self, app_label, name, kwargs, update=False):
         return self._get_or_create.delay(app_label, name, kwargs,

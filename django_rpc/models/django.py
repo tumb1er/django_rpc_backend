@@ -107,7 +107,13 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
 
 class DjangoRpcManager(models.manager.Manager, base.RpcManager):
-    _queryset_class = DjangoRpcQuerySet
+    _rpc_queryset_class = DjangoRpcQuerySet
+
+    def get_queryset(self):
+        if rpc_enabled(router.db_for_read(self.model)):
+             return self._rpc_queryset_class(
+                 model=self.model, using=self._db, hints=self._hints)
+        return super().get_queryset()
 
 
 class DjangoRpcModel(six.with_metaclass(DjangoRpcModelBase,
@@ -116,3 +122,5 @@ class DjangoRpcModel(six.with_metaclass(DjangoRpcModelBase,
         abstract = True
 
     objects = DjangoRpcManager()
+
+    save = models.Model.save
