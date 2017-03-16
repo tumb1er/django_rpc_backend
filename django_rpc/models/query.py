@@ -219,9 +219,10 @@ class RpcQuerySet(RpcBaseQuerySet):
     def datetimes(self, *args, **kwargs):
         pass
 
+    @utils.queryset_method
     def none(self, *args, **kwargs):
-        """ useless """
-        raise NotImplementedError()
+        # FIXME: implement correct EmptyQuerySet behavior without rpc calls
+        pass
 
     @utils.queryset_method
     def all(self, *args, **kwargs):

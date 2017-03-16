@@ -89,8 +89,9 @@ class QuerySetTestsMixin(TestCase):
         self.skipTest("TBD: QuerySet.datetimes")
 
     def testNone(self):
-        with self.assertRaises(NotImplementedError):
-            self.client_model.objects.none()
+        # FIXME: убрать вызов fetch task
+        qs = self.client_model.objects.none()
+        self.assertListEqual(list(qs), [])
 
     def testAll(self):
         qs = self.client_model.objects.all()
