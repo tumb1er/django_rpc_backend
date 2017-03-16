@@ -1,9 +1,8 @@
 # coding: utf-8
 
 import celery
-from django.db.models import QuerySet, Model, sql
-from django.db import router
 from django.apps.registry import apps
+from django.db.models import QuerySet, Model
 from rest_framework import serializers
 
 
@@ -28,6 +27,13 @@ class BaseRpcTask(celery.Task):
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
+    def trace_queryset(self, qs, trace):
+        for method, args, kwargs in trace:
+            qs = getattr(qs, method)(*args, **kwargs)
+            if not isinstance(qs, (QuerySet, Model)):
+                break
+        return qs
+
 
 class FetchTask(BaseRpcTask):
 
@@ -47,10 +53,7 @@ class FetchTask(BaseRpcTask):
         fields = [f for f in fields + extra_fields
                   if f not in exclude_fields] or '__all__'
 
-        for method, args, kwargs in trace:
-            qs = getattr(qs, method)(*args, **kwargs)
-            if not isinstance(qs, (QuerySet, Model)):
-                return qs
+        qs = self.trace_queryset(qs, trace)
         if native:
             return qs
         return self.serialize(qs, model=model, fields=fields,
@@ -76,10 +79,12 @@ class InsertTask(BaseRpcTask):
 
 class UpdateTask(BaseRpcTask):
 
-    def __call__(self, module_name, class_name, rpc_data, filters):
+    def __call__(self, module_name, class_name, trace, updates):
         model = apps.get_model(module_name, class_name)
 
-        return model.objects.filter(**filters).update(**rpc_data)
+        qs = model.objects.get_queryset()
+        qs = self.trace_queryset(qs, trace)
+        return qs.update(**updates)
 
 
 class GetOrCreateTask(BaseRpcTask):

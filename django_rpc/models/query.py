@@ -120,6 +120,15 @@ class RpcBaseQuerySet(object):
                                return_id=True)
         return result
 
+    def update(self, *args, **kwargs):
+        opts = self.model.Rpc
+        client = RpcClient.from_db(opts.db)
+        assert not args, "args not supported for update"
+        data = kwargs
+        result = client.update(opts.app_label, opts.name, self.rpc_trace, data)
+        return result
+
+
     def bulk_create(self, objs, batch_size=None):
         # FIXME: batch_size support
         opts = self.model.Rpc
@@ -296,9 +305,7 @@ class RpcQuerySet(RpcBaseQuerySet):
     def exists(self, *args, **kwargs):
         pass
 
-    @utils.value_method
-    def update(self, *args, **kwargs):
-        pass
+    update = RpcBaseQuerySet.update
 
     @utils.value_method
     def delete(self, *args, **kwargs):

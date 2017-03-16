@@ -63,8 +63,8 @@ class RpcClient(object):
         return self._insert.delay(app_label, name, objs, fields,
                                   return_id=return_id, raw=raw).get()
 
-    def update(self, app_label, name, data, filters):
-        return self._update.delay(app_label, name, data, filters).get()
+    def update(self, app_label, name, trace, updates):
+        return self._update.delay(app_label, name, trace, updates).get()
 
     def get_or_create(self, app_label, name, kwargs, update=False):
         return self._get_or_create.delay(app_label, name, kwargs,

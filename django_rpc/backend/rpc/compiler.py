@@ -6,6 +6,7 @@ from django.db.models.sql.constants import MULTI
 from rest_framework import serializers
 
 from django_rpc.celery.client import RpcClient
+from django_rpc.models.query import Trace
 
 SINGLE_MODEL_UPDATE_SUPPORTED = "single model save only supported"
 
@@ -93,11 +94,12 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
         assert col.field.primary_key, SINGLE_MODEL_UPDATE_SUPPORTED
 
         values = {f.attname: v for f, _, v in self.query.values}
-        rpc_fields = tuple(values.keys())
+
+        trace = (Trace('filter', (), {'pk': pk}),)
 
         results = self.client.update(
             rpc.app_label,
             rpc.name,
-            values,
-            dict(pk=pk))
+            trace,
+            values)
         return results

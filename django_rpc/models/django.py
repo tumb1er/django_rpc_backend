@@ -55,9 +55,6 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
     def get_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"
-        db = router.db_for_write(self.model)
-        if not rpc_enabled(db):
-            return models.QuerySet.get_or_create(self, **kwargs)
 
         rpc = self.model.Rpc
         client = RpcClient.from_db(rpc.db)
@@ -81,9 +78,6 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
     def update_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"
-        db = router.db_for_write(self.model)
-        if not rpc_enabled(db):
-            return models.QuerySet.update_or_create(self, **kwargs)
 
         rpc = self.model.Rpc
         client = RpcClient.from_db(rpc.db)
