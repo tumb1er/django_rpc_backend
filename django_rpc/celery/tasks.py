@@ -55,6 +55,8 @@ class FetchTask(BaseRpcTask):
 
         qs = self.trace_queryset(qs, trace)
         if native:
+            if isinstance(qs, QuerySet):
+                return list(qs)
             return qs
         return self.serialize(qs, model=model, fields=fields,
                               extra_fields=extra_fields)

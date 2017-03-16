@@ -71,6 +71,8 @@ class QuerySetTestsMixin(TestCase):
         expected = list(self.server_model.objects.values_list('char_field'))
         self.assertEqual(len(data), len(expected))
         for d, e in zip(data, expected):
+            self.assertIsInstance(d, (list, tuple))
+            d = tuple(d)
             self.assertTupleEqual(d, e)
 
     def testValuesListFlat(self):
