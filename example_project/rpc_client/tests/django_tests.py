@@ -1,6 +1,5 @@
 # coding: utf-8
 from django.test import TestCase
-
 from django_rpc.models import RpcModel
 from rpc_client.models import ClientModel
 from rpc_client.tests import base

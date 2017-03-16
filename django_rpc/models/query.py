@@ -305,4 +305,8 @@ class RpcQuerySet(RpcBaseQuerySet):
         pass
 
     def as_manager(self, *args, **kwargs):
-        pass
+        base_manager = type(self.model.objects)
+        manager_class = type("ManagerFromQuerySet",
+                             (base_manager,),
+                             {'_queryset_class': type(self)})
+        return manager_class()

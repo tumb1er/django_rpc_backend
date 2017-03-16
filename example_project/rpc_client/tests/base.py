@@ -1,6 +1,7 @@
 # coding: utf-8
 from unittest import TestCase
 
+from django.db import models
 from typing import Type
 
 
@@ -211,6 +212,63 @@ class QuerySetTestsMixin(TestCase):
         real = self.client_model.objects.count()
         expected = self.server_model.objects.count()
         self.assertEqual(real, expected)
+
+    def testInBulk(self):
+        # FIXME: классы итераторов
+        self.skipTest("TBD: QuerySet.in_bulk")
+
+    def testIterator(self):
+        # FIXME: классы итераторов
+        self.skipTest("TBD: QuerySet.iterator")
+
+    def testLatest(self):
+        # FIXME: сериализация datetime
+        self.skipTest("TBD: QuerySet.latest")
+
+    def testEarliest(self):
+        # FIXME: сериализация datetime
+        self.skipTest("TBD: QuerySet.earliest")
+
+    def testFirst(self):
+        c1 = self.client_model.objects.order_by('char_field').first()
+        s1 = self.server_model.objects.order_by('char_field').first()
+        self.assertObjectsEqual(c1, s1)
+
+    def testLast(self):
+        c1 = self.client_model.objects.order_by('char_field').last()
+        s1 = self.server_model.objects.order_by('char_field').last()
+        self.assertObjectsEqual(c1, s1)
+
+    def testAggregate(self):
+        expected = self.server_model.objects.aggregate(c=models.Count('*'))
+        real = self.client_model.objects.aggregate(c=models.Count('*'))
+        self.assertDictEqual(expected, real)
+
+    def testExists(self):
+        exists = self.client_model.objects.filter(int_field=1).exists()
+        self.assertIs(exists, True)
+
+    def testUpdate(self):
+        result = self.client_model.objects.filter(
+            pk=self.s1.pk).update(int_field=100500)
+        self.assertIs(result, 1)
+        self.s1.refresh_from_db()
+        self.assertEqual(self.s1.int_field, 100500)
+
+    def testDelete(self):
+        result = self.client_model.objects.filter(
+            pk=self.s1.pk).delete()
+
+        # Django-1.10 result is (total, {per_class})
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(result[0], 1)
+
+        self.assertFalse(self.server_model.objects.filter(
+            pk=self.s1.pk).exists())
+
+    def testAsManager(self):
+        m1 = self.client_model.objects.filter(int_field=2).as_manager()
+        self.assertIsInstance(m1, type(self.client_model.objects))
 
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)
