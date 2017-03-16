@@ -261,7 +261,7 @@ class QuerySetTestsMixin(TestCase):
             pk=self.s1.pk).delete()
 
         # Django-1.10 result is (total, {per_class})
-        self.assertIsInstance(result, tuple)
+        self.assertIsInstance(result, (tuple, list))
         self.assertEqual(result[0], 1)
 
         self.assertFalse(self.server_model.objects.filter(
