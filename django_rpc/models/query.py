@@ -128,6 +128,13 @@ class RpcBaseQuerySet(object):
         result = client.update(opts.app_label, opts.name, self.rpc_trace, data)
         return result
 
+    def delete(self, *args, **kwargs):
+        opts = self.model.Rpc
+        client = RpcClient.from_db(opts.db)
+        assert not args, "args not supported for delete"
+        assert not kwargs, "kwargs not supported for delete"
+        result = client.delete(opts.app_label, opts.name, self.rpc_trace)
+        return result
 
     def bulk_create(self, objs, batch_size=None):
         # FIXME: batch_size support
@@ -308,9 +315,7 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     update = RpcBaseQuerySet.update
 
-    @utils.value_method
-    def delete(self, *args, **kwargs):
-        pass
+    delete = RpcBaseQuerySet.delete
 
     def as_manager(self, *args, **kwargs):
         base_manager = type(self.model.objects)

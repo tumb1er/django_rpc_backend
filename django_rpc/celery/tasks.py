@@ -89,6 +89,16 @@ class UpdateTask(BaseRpcTask):
         return qs.update(**updates)
 
 
+class DeleteTask(BaseRpcTask):
+
+    def __call__(self, module_name, class_name, trace):
+        model = apps.get_model(module_name, class_name)
+
+        qs = model.objects.get_queryset()
+        qs = self.trace_queryset(qs, trace)
+        return qs.delete()
+
+
 class GetOrCreateTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, kwargs, update=False):
@@ -115,6 +125,11 @@ def insert(*args, **kwargs):
 
 @celery.task(base=UpdateTask, bind=True, shared=True, name='django_rpc.update')
 def update(*args, **kwargs):
+    pass
+
+
+@celery.task(base=DeleteTask, bind=True, shared=True, name='django_rpc.delete')
+def delete(*args, **kwargs):
     pass
 
 

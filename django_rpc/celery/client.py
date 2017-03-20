@@ -44,6 +44,10 @@ class RpcClient(object):
         return self._app.tasks['django_rpc.update']
 
     @property
+    def _delete(self):
+        return self._app.tasks['django_rpc.delete']
+
+    @property
     def _get_or_create(self):
         return self._app.tasks['django_rpc.get_or_create']
 
@@ -65,6 +69,9 @@ class RpcClient(object):
 
     def update(self, app_label, name, trace, updates):
         return self._update.delay(app_label, name, trace, updates).get()
+
+    def delete(self, app_label, name, trace):
+        return self._delete.delay(app_label, name, trace).get()
 
     def get_or_create(self, app_label, name, kwargs, update=False):
         return self._get_or_create.delay(app_label, name, kwargs,

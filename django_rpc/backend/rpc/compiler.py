@@ -2,13 +2,19 @@
 
 from django.db.models.sql import compiler
 from django.db.models.sql.compiler import SQLCompiler
-from django.db.models.sql.constants import MULTI
+from django.db.models.sql.constants import MULTI, CURSOR
 from rest_framework import serializers
 
 from django_rpc.celery.client import RpcClient
 from django_rpc.models.query import Trace
 
 SINGLE_MODEL_UPDATE_SUPPORTED = "single model save only supported"
+SINGLE_MODEL_DELETE_SUPPORTED = "single model delete only supported"
+
+
+class RpcCursorStub(object):
+    def __init__(self, rowcount=None):
+        self.rowcount = rowcount
 
 
 class RpcSQLCompiler(SQLCompiler):
@@ -103,3 +109,27 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
             trace,
             values)
         return results
+
+
+class SQLDeleteCompiler(compiler.SQLDeleteCompiler, RpcSQLCompiler):
+
+    def execute_sql(self, result_type=CURSOR):
+        rpc = self.query.model.Rpc
+        where = self.query.where
+        assert len(where.children) == 1, SINGLE_MODEL_DELETE_SUPPORTED
+        lookup = where.children[0]
+        assert lookup.lookup_name == 'in', SINGLE_MODEL_DELETE_SUPPORTED
+        col, pks = lookup.lhs, lookup.rhs
+        assert col.field.primary_key, SINGLE_MODEL_DELETE_SUPPORTED
+        assert isinstance(pks, list), SINGLE_MODEL_DELETE_SUPPORTED
+        trace = (Trace('filter', (), {'pk__in': pks}),)
+
+        results = self.client.delete(
+            rpc.app_label,
+            rpc.name,
+            trace)
+        if result_type == CURSOR:
+            return RpcCursorStub(rowcount=results[0])
+        return results
+
+

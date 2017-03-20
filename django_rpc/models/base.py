@@ -90,3 +90,10 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
         else:
             self.__class__.objects.filter(pk=pk).update(**data)
 
+    def delete(self):
+        pk = getattr(self, self.Rpc.pk_field, None)
+        assert pk is not None, "delete non-existing object"
+
+        self.__class__.objects.filter(pk=pk).delete()
+
+

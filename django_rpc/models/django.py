@@ -118,3 +118,5 @@ class DjangoRpcModel(six.with_metaclass(DjangoRpcModelBase,
     objects = DjangoRpcManager()
 
     save = models.Model.save
+
+    delete = models.Model.delete

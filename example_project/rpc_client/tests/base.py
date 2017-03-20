@@ -291,6 +291,11 @@ class QuerySetTestsMixin(TestCase):
         self.assertEqual(s.int_field, 100500)
         self.assertObjectsEqual(c, s)
 
+    def testModelDelete(self):
+        c = self.client_model.objects.get(id=self.s1.id)
+        c.delete()
+        self.assertFalse(self.server_model.objects.filter(id=c.id).exists())
+
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)
         self.assertEqual(len(result), len(expected))
