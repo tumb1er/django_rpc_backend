@@ -57,15 +57,6 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
         app_label = None
         name = None
         pk_field = 'id'
-    #
-    # @property
-    # def pk(self):
-    #     """ Naive Django primary key fetching."""
-    #     return getattr(self, self.Rpc.pk_field, None)
-    #
-    # @pk.setter
-    # def pk(self, value):
-    #     setattr(self, self)
 
     def save(self, force_insert=False, force_update=False, update_fields=None):
         if update_fields:
@@ -86,7 +77,7 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
 
         if force_insert:
             obj = self.__class__.objects.create(**data)
-            setattr(self, self.Rpc.pk_field, obj.id)
+            self.__dict__.update(obj.__dict__)
         else:
             self.__class__.objects.filter(pk=pk).update(**data)
 

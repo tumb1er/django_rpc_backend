@@ -1,11 +1,30 @@
 # coding: utf-8
 from unittest import TestCase
 
+from celery import Task
 from django.db import models
+from django.utils.timezone import now
+from mock import mock
 from typing import Type
 
-
+from django_rpc.celery import codecs
 from django_rpc.models.base import RpcModel
+
+
+def encode_decode(data):
+    data = codecs.x_rpc_json_dumps(data)
+    return codecs.x_rpc_json_loads(data)
+
+
+def celery_passthrough(task, *args, **kwargs):
+    """ Simulate celery task and result transport.
+    
+    In CELERY_ALWAYS_EAGER mode no celery serializers are called.
+    """
+    args, kwargs = encode_decode([args, kwargs])
+    result = task.apply(*args, **kwargs)
+    result._result = encode_decode(result._result)
+    return result
 
 
 class BaseRpcTestCase(TestCase):
@@ -13,7 +32,22 @@ class BaseRpcTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
         __import__('django_rpc.celery.tasks')
+        p = mock.patch.object(Task, 'apply_async',
+                              side_effect=celery_passthrough, autospec=True)
+        cls._apply_async_patcher = p
+        p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        try:
+            if hasattr(cls._apply_async_patcher, 'is_local'):
+                cls._apply_async_patcher.stop()
+        except Exception as e:
+            pass
+
 
 
 class QuerySetTestsMixin(TestCase):
@@ -27,6 +61,12 @@ class QuerySetTestsMixin(TestCase):
             del o1._state
         if hasattr(o2, '_state'):
             del o2._state
+        # for k, v in o1.__dict__.items():
+        #     if isinstance(v, datetime):
+        #         setattr(o1, k, v.isoformat().replace('+00:00', 'Z'))
+        # for k, v in o2.__dict__.items():
+        #     if isinstance(v, datetime):
+        #         setattr(o2, k, v.isoformat().replace('+00:00', 'Z'))
         # noinspection PyUnresolvedReferences
         self.assertDictEqual(o1.__dict__, o2.__dict__)
 
@@ -87,8 +127,9 @@ class QuerySetTestsMixin(TestCase):
         self.skipTest("TBD: QuerySet.dates")
 
     def testDateTimes(self):
-        # FIXME: сериализация DateTime
-        self.skipTest("TBD: QuerySet.datetimes")
+        data = list(self.client_model.objects.datetimes('dt_field', 'year'))
+        expected = list(self.server_model.objects.datetimes('dt_field', 'year'))
+        self.assertListEqual(data, expected)
 
     def testNone(self):
         # FIXME: убрать вызов fetch task
@@ -207,7 +248,9 @@ class QuerySetTestsMixin(TestCase):
         self.assertEqual(self.server_model.objects.count(), server_count + 2)
         s2, s3 = self.server_model.objects.filter(pk__gt=self.s2.pk)
         s2.id = None
+        c2.id = None
         s3.id = None
+        c3.id = None
         self.assertObjectsEqual(c2, s2)
         self.assertObjectsEqual(c3, s3)
 
@@ -286,6 +329,7 @@ class QuerySetTestsMixin(TestCase):
     def testModelSaveUpdate(self):
         c = self.client_model.objects.get(id=self.s1.id)
         c.int_field = 100500
+        c.dt_field = now().replace(microsecond=123000)
         c.save()
         s = self.server_model.objects.get(pk=c.id)
         self.assertEqual(s.int_field, 100500)

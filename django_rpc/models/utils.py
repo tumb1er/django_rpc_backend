@@ -15,8 +15,7 @@ def single_object_method(func):
         qs = self._trace(func.__name__, args, kwargs)
         # noinspection PyProtectedMember
         data = qs._fetch()
-        instance = qs.model()
-        instance.__dict__.update(data)
+        instance = qs._instantiate(data)
         return instance
     return inner
 

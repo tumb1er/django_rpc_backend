@@ -29,6 +29,16 @@ class RpcSettings(object):
         self.DATABASES = databases
 
 
+_codecs_registered = False
+
+
+if not _codecs_registered:  # not-reentrant
+    from .codecs import register_codecs
+
+    register_codecs()
+    _codecs_registered = True
+
+
 if os.environ.get('DJANGO_SETTINGS_MODULE'):
     from django.conf import settings
     databases = settings.DATABASES

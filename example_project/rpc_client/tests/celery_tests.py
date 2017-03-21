@@ -31,6 +31,7 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls._apply_async_patcher.stop()
         cmd = 'celery worker -c 1 -A django_rpc.celery.app --loglevel=DEBUG'
         cls.celery = Process(target=start_celery, args=[cmd.split(' ')])
         cls.celery.start()

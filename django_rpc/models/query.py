@@ -8,6 +8,10 @@ from django_rpc.models import utils
 Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
 
+def dictfilter(d, keys):
+    return {k:v for k, v in d.items() if k in keys}
+
+
 class RpcBaseQuerySet(object):
     """ Django-style реализация конфигуратора запроса к rpc."""
 
@@ -63,8 +67,7 @@ class RpcBaseQuerySet(object):
             if self._return_native:
                 yield item
                 continue
-            obj = self.model()
-            obj.__dict__.update(item)
+            obj = self._instantiate(item)
             for f in self._exclude_fields:
                 if hasattr(obj, f):
                     delattr(obj, f)
@@ -73,6 +76,11 @@ class RpcBaseQuerySet(object):
                     if k not in self._field_list:
                         delattr(obj, k)
             yield obj
+
+    def _instantiate(self, data):
+        obj = self.model()
+        obj.__dict__.update(data)
+        return obj
 
     def _fetch(self):
         opts = self.model.Rpc
@@ -140,9 +148,11 @@ class RpcBaseQuerySet(object):
         # FIXME: batch_size support
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
-        data = [obj.__dict__ for obj in objs]
         fields = self._get_fields(objs[0])
-        client.insert(opts.app_label, opts.name, data, fields)
+        data = [dictfilter(obj.__dict__, fields) for obj in objs]
+        results = client.insert(opts.app_label, opts.name, data, fields)
+        for obj, inserted in zip(objs, results):
+            obj.__dict__.update(inserted)
         return objs
 
     def get_or_create(self, *args, **kwargs):
@@ -151,8 +161,7 @@ class RpcBaseQuerySet(object):
         assert not args, "args not supported for create"
         data, created = client.get_or_create(
             rpc.app_label, rpc.name, kwargs)
-        instance = self.model()
-        instance.__dict__.update(data)
+        instance = self._instantiate(data)
 
         return instance, created
 
@@ -162,8 +171,7 @@ class RpcBaseQuerySet(object):
         assert not args, "args not supported for create"
         data, created = client.get_or_create(
             rpc.app_label, rpc.name, kwargs, update=True)
-        instance = self.model()
-        instance.__dict__.update(data)
+        instance = self._instantiate(data)
 
         return instance, created
 
@@ -317,6 +325,7 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     delete = RpcBaseQuerySet.delete
 
+    # noinspection PyUnusedLocal
     def as_manager(self, *args, **kwargs):
         base_manager = type(self.model.objects)
         manager_class = type("ManagerFromQuerySet",

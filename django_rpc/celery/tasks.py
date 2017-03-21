@@ -69,7 +69,7 @@ class InsertTask(BaseRpcTask):
 
         class Serializer(serializers.ModelSerializer):
             class Meta:
-                fields = rpc_fields
+                fields = '__all__'
                 model = apps.get_model(module_name, class_name)
 
         s = Serializer(data=rpc_data, many=True)
@@ -77,6 +77,7 @@ class InsertTask(BaseRpcTask):
             result = s.save()
             if return_id:
                 return result[0].pk
+            return s.data
 
 
 class UpdateTask(BaseRpcTask):
