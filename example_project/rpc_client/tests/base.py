@@ -1,6 +1,7 @@
 # coding: utf-8
-from unittest import TestCase
+from unittest import TestCase, expectedFailure
 
+import pytz
 from celery import Task
 from django.db import models
 from django.utils.timezone import now
@@ -23,17 +24,21 @@ def celery_passthrough(task, *args, **kwargs):
     """
     args, kwargs = encode_decode([args, kwargs])
     result = task.apply(*args, **kwargs)
+    # noinspection PyProtectedMember
     result._result = encode_decode(result._result)
     return result
 
 
 class BaseRpcTestCase(TestCase):
 
+    _apply_async_patcher = None
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
         __import__('django_rpc.celery.tasks')
+        # noinspection PyUnresolvedReferences
         p = mock.patch.object(Task, 'apply_async',
                               side_effect=celery_passthrough, autospec=True)
         cls._apply_async_patcher = p
@@ -42,12 +47,8 @@ class BaseRpcTestCase(TestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        try:
-            if hasattr(cls._apply_async_patcher, 'is_local'):
-                cls._apply_async_patcher.stop()
-        except Exception as e:
-            pass
-
+        if hasattr(cls._apply_async_patcher, 'is_local'):
+            cls._apply_async_patcher.stop()
 
 
 class QuerySetTestsMixin(TestCase):
@@ -61,13 +62,6 @@ class QuerySetTestsMixin(TestCase):
             del o1._state
         if hasattr(o2, '_state'):
             del o2._state
-        # for k, v in o1.__dict__.items():
-        #     if isinstance(v, datetime):
-        #         setattr(o1, k, v.isoformat().replace('+00:00', 'Z'))
-        # for k, v in o2.__dict__.items():
-        #     if isinstance(v, datetime):
-        #         setattr(o2, k, v.isoformat().replace('+00:00', 'Z'))
-        # noinspection PyUnresolvedReferences
         self.assertDictEqual(o1.__dict__, o2.__dict__)
 
     def setUp(self):
@@ -122,13 +116,27 @@ class QuerySetTestsMixin(TestCase):
             'char_field', flat=True))
         self.assertListEqual(data, expected)
 
+    @expectedFailure
     def testDates(self):
-        # FIXME: сериализация DateTime
-        self.skipTest("TBD: QuerySet.dates")
+        # FIXME: re-imlement as Iterator
+        data = list(self.client_model.objects.dates('dt_field', 'year'))
+        expected = list(self.server_model.objects.dates('dt_field', 'year'))
+        self.assertListEqual(data, expected)
 
     def testDateTimes(self):
+        # FIXME: re-imlement as Iterator
         data = list(self.client_model.objects.datetimes('dt_field', 'year'))
         expected = list(self.server_model.objects.datetimes('dt_field', 'year'))
+        # TODO: add test for tz_info
+        self.assertListEqual(data, expected)
+
+    def testDateTimesTZInfo(self):
+        self.skipTest("TBD: custom tzinfo for iterator")
+        tz = pytz.timezone('Europe/Moscow')
+        data = list(self.client_model.objects.datetimes('dt_field', 'year',
+                                                        tzinfo=tz))
+        expected = list(self.server_model.objects.datetimes('dt_field', 'year',
+                                                            tzinfo=tz))
         self.assertListEqual(data, expected)
 
     def testNone(self):
@@ -268,12 +276,14 @@ class QuerySetTestsMixin(TestCase):
         self.skipTest("TBD: QuerySet.iterator")
 
     def testLatest(self):
-        # FIXME: сериализация datetime
-        self.skipTest("TBD: QuerySet.latest")
+        c2 = self.client_model.objects.latest('dt_field')
+        s2 = self.server_model.objects.latest('dt_field')
+        self.assertObjectsEqual(c2, s2)
 
     def testEarliest(self):
-        # FIXME: сериализация datetime
-        self.skipTest("TBD: QuerySet.earliest")
+        c1 = self.client_model.objects.earliest('dt_field')
+        s1 = self.server_model.objects.earliest('dt_field')
+        self.assertObjectsEqual(c1, s1)
 
     def testFirst(self):
         c1 = self.client_model.objects.order_by('char_field').first()
