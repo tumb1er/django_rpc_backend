@@ -11,9 +11,9 @@ S_MUST_DEFINE_RPC_CLASS = "model %s must define Rpc class"
 class RpcModelBase(type):
 
     # noinspection PyInitNewSignature
-    def __new__(cls, name, bases, attrs):
-        cls.init_rpc_meta(name, bases, attrs)
-        new = super(RpcModelBase, cls).__new__(cls, name, bases, attrs)
+    def __new__(mcs, name, bases, attrs):
+        mcs.init_rpc_meta(name, bases, attrs)
+        new = super(RpcModelBase, mcs).__new__(mcs, name, bases, attrs)
         try:
             # Django manager already done this
             manager = getattr(new, 'objects')
@@ -22,7 +22,7 @@ class RpcModelBase(type):
             pass
         return new
 
-    def __call__(self, *args, **kwargs):
+    def __call__(cls, *args, **kwargs):
         obj = super().__call__(*args)
         rpc = obj.Rpc
         if not hasattr(obj, rpc.pk_field):
@@ -86,5 +86,3 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
         assert pk is not None, "delete non-existing object"
 
         self.__class__.objects.filter(pk=pk).delete()
-
-

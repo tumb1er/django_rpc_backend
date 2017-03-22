@@ -5,7 +5,6 @@ from __future__ import absolute_import
 import six
 from django.conf import settings
 from django.db import models, router
-from django.utils.functional import cached_property
 from rest_framework import serializers
 
 from django_rpc.celery import defaults
@@ -38,6 +37,9 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
 
 
 class NativeField(serializers.Field):
+    def to_representation(self, value):
+        return value
+
     def to_internal_value(self, data):
         return data
 
@@ -49,23 +51,7 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         # noinspection PyTypeChecker
         models.QuerySet.__init__(self, model=model, query=query, using=using,
                                  hints=hints)
-
-    def __iter__(self):
-        result = self._fetch()
-
-        for item in result.__iter__():
-            if self._return_native:
-                yield item
-                continue
-            obj = self._instantiate(item)
-            for f in self._exclude_fields:
-                if hasattr(obj, f):
-                    delattr(obj, f)
-            if self._field_list:
-                for k in list(obj.__dict__.keys()):
-                    if k not in self._field_list:
-                        delattr(obj, k)
-            yield obj
+        self._iterable_class = RpcQuerySet._iterable_class
 
     @staticmethod
     def _get_fields(obj):
@@ -88,11 +74,6 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
         return instance, created
 
-    def _instantiate(self, data):
-        instance = self.model()
-        instance.__dict__.update(self._serializer.to_internal_value(data))
-        return instance
-
     def update_or_create(self, *args, **kwargs):
         assert not args, "args not supported for create"
 
@@ -105,42 +86,14 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
         return instance, created
 
-    @cached_property
-    def _serializer(self):
+    def select_for_update(self, *args, **kwargs):
+        raise NotImplementedError()
 
-        fields = self._field_list or ()
-        pk_name = self.model._meta.pk.attname
+    def raw(self, *args, **kwargs):
+        raise NotImplementedError()
 
-        if fields or self._extra_fields:
-            if not fields:
-                fields = tuple([f.attname for f in self.model._meta.fields])
-            all_fields = set(fields + self._extra_fields + (pk_name,))
-            serializer_fields = [f for f in all_fields
-                                 if f not in self._exclude_fields]
-            serializer_exclude = None
-        elif self._exclude_fields:
-            serializer_fields = None
-            serializer_exclude = self._exclude_fields
-        else:
-            serializer_fields = '__all__'
-            serializer_exclude = None
-
-        class Meta:
-            model = self.model
-            fields = serializer_fields
-            exclude = serializer_exclude
-
-        attrs = {'Meta': Meta}
-        for f in self._extra_fields:
-            attrs[f] = NativeField()
-
-        Serializer = type('Serializer', (serializers.ModelSerializer,), attrs)
-
-        # noinspection PyProtectedMember
-        opts = self.model._meta
-        s = Serializer()
-        s.fields[opts.pk.attname].read_only = False
-        return s
+    def using(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class DjangoRpcManager(models.manager.Manager, base.RpcManager):
@@ -148,8 +101,8 @@ class DjangoRpcManager(models.manager.Manager, base.RpcManager):
 
     def get_queryset(self):
         if rpc_enabled(router.db_for_read(self.model)):
-             return self._rpc_queryset_class(
-                 model=self.model, using=self._db, hints=self._hints)
+            return self._rpc_queryset_class(
+                model=self.model, using=self._db, hints=self._hints)
         return super().get_queryset()
 
 

@@ -12,6 +12,27 @@ def dictfilter(d, keys):
     return {k:v for k, v in d.items() if k in keys}
 
 
+class BaseIterable(object):
+    def __init__(self, queryset):
+        self.queryset = queryset
+
+    def __iter__(self):
+        result = self.queryset._fetch()
+        for item in result:
+            if self.queryset._return_native:
+                yield item
+                continue
+            obj = self.queryset._instantiate(item)
+            for f in self.queryset._exclude_fields:
+                if hasattr(obj, f):
+                    delattr(obj, f)
+            if self.queryset._field_list:
+                for k in list(obj.__dict__.keys()):
+                    if k not in self.queryset._field_list:
+                        delattr(obj, k)
+            yield obj
+
+
 class RpcBaseQuerySet(object):
     """ Django-style реализация конфигуратора запроса к rpc."""
 
@@ -22,8 +43,11 @@ class RpcBaseQuerySet(object):
         '_exclude_fields'
     ]
 
+    _iterable_class = BaseIterable
+
     def __init__(self, model):
         self.model = model
+        self._result_cache = None
         self.__trace = ()
         self.__field_list = ()
         self._extra_fields = ()
@@ -60,22 +84,16 @@ class RpcBaseQuerySet(object):
             value += (pk_name,)
         self.__field_list = value
 
-    def __iter__(self):
-        result = self._fetch()
+    def iterator(self):
+        return iter(self._iterable_class(self))
 
-        for item in result.__iter__():
-            if self._return_native:
-                yield item
-                continue
-            obj = self._instantiate(item)
-            for f in self._exclude_fields:
-                if hasattr(obj, f):
-                    delattr(obj, f)
-            if self._field_list:
-                for k in list(obj.__dict__.keys()):
-                    if k not in self._field_list:
-                        delattr(obj, k)
-            yield obj
+    def _fetch_all(self):
+        if self._result_cache is None:
+            self._result_cache = list(self.iterator())
+
+    def __iter__(self):
+        self._fetch_all()
+        return iter(self._result_cache)
 
     def _instantiate(self, data):
         obj = self.model()
@@ -294,8 +312,7 @@ class RpcQuerySet(RpcBaseQuerySet):
     def in_bulk(self, *args, **kwargs):
         pass
 
-    def iterator(self, *args, **kwargs):
-        pass
+    iterator = RpcBaseQuerySet.iterator
 
     @utils.single_object_method
     def latest(self, *args, **kwargs):
