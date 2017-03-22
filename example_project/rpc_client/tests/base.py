@@ -116,26 +116,21 @@ class QuerySetTestsMixin(TestCase):
             'char_field', flat=True))
         self.assertListEqual(data, expected)
 
-    @expectedFailure
     def testDates(self):
-        # FIXME: re-imlement as Iterator
         data = list(self.client_model.objects.dates('dt_field', 'year'))
         expected = list(self.server_model.objects.dates('dt_field', 'year'))
         self.assertListEqual(data, expected)
 
     def testDateTimes(self):
-        # FIXME: re-imlement as Iterator
         data = list(self.client_model.objects.datetimes('dt_field', 'year'))
         expected = list(self.server_model.objects.datetimes('dt_field', 'year'))
-        # TODO: add test for tz_info
         self.assertListEqual(data, expected)
 
     def testDateTimesTZInfo(self):
-        self.skipTest("TBD: custom tzinfo for iterator")
         tz = pytz.timezone('Europe/Moscow')
-        data = list(self.client_model.objects.datetimes('dt_field', 'year',
+        data = list(self.client_model.objects.datetimes('dt_field', 'minute',
                                                         tzinfo=tz))
-        expected = list(self.server_model.objects.datetimes('dt_field', 'year',
+        expected = list(self.server_model.objects.datetimes('dt_field', 'minute',
                                                             tzinfo=tz))
         self.assertListEqual(data, expected)
 
@@ -262,18 +257,44 @@ class QuerySetTestsMixin(TestCase):
         self.assertObjectsEqual(c2, s2)
         self.assertObjectsEqual(c3, s3)
 
+    def testBulkCreateBatchSize(self):
+        server_count = self.server_model.objects.count()
+        c2 = self.client_model(char_field='2', int_field=1)
+        c3 = self.client_model(char_field='3', int_field=1)
+        ret = self.client_model.objects.bulk_create([c2, c3], batch_size=1)
+        self.assertEqual(len(ret), 2)
+        self.assertIsInstance(ret[0], self.client_model)
+        self.assertObjectsEqual(ret[0], c2)
+        self.assertEqual(self.server_model.objects.count(), server_count + 2)
+        s2, s3 = self.server_model.objects.filter(pk__gt=self.s2.pk)
+        s2.id = None
+        c2.id = None
+        s3.id = None
+        c3.id = None
+        self.assertObjectsEqual(c2, s2)
+        self.assertObjectsEqual(c3, s3)
+
     def testCount(self):
         real = self.client_model.objects.count()
         expected = self.server_model.objects.count()
         self.assertEqual(real, expected)
 
     def testInBulk(self):
-        # FIXME: классы итераторов
-        self.skipTest("TBD: QuerySet.in_bulk")
+        cc = self.client_model.objects.in_bulk()
+        ss = self.server_model.objects.in_bulk()
+        self.assertIsInstance(cc, dict)
+        self.assertEqual(len(cc), len(ss))
+        self.assertSetEqual(set(cc.keys()), set(ss.keys()))
+        c1 = cc[self.s1.pk]
+        s1 = ss[self.s1.pk]
+        self.assertObjectsEqual(c1, s1)
 
     def testIterator(self):
-        # FIXME: классы итераторов
-        self.skipTest("TBD: QuerySet.iterator")
+        client_iter = self.client_model.objects.filter(pk=self.s1.pk).iterator()
+        server_iter = self.server_model.objects.filter(pk=self.s1.pk).iterator()
+        self.assertObjectsEqual(next(client_iter), next(server_iter))
+        with self.assertRaises(StopIteration):
+            next(client_iter)
 
     def testLatest(self):
         c2 = self.client_model.objects.latest('dt_field')

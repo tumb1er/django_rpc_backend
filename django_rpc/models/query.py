@@ -1,9 +1,12 @@
 # coding: utf-8
+import functools
 from collections import namedtuple
+from datetime import datetime
+
+import pytz
 
 from django_rpc.celery.client import RpcClient
 from django_rpc.models import utils
-
 
 Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
@@ -25,10 +28,46 @@ class BaseIterable(object):
             yield self.queryset.instantiate(item)
 
 
+class EmptyIterable(BaseIterable):
+    def __iter__(self):
+        return iter([])
+
+
 class ValuesIterable(BaseIterable):
     def __iter__(self):
         result = self.queryset.fetch()
         return iter(result)
+
+
+class DateTimeIterable(BaseIterable):
+
+    def __init__(self, queryset, tzinfo=pytz.utc):
+        super().__init__(queryset)
+        # FIXME: tzinfo support may be different for different server databases
+        # https://docs.djangoproject.com/en/1.10/ref/models/querysets/#datetimes
+        self.tzinfo = tzinfo
+
+    def __iter__(self):
+        result = self.queryset.fetch()
+        for item in result:
+            # parse naive
+            dt = datetime.strptime(item, '%Y-%m-%dT%H:%M:%SZ')
+            # cast to utc
+            dt = datetime(*dt.timetuple()[:6], tzinfo=pytz.utc)
+            # move to local tz
+            yield dt.astimezone(self.tzinfo)
+
+
+# noinspection PyPep8Naming
+def TZDateTimeIterable(tzinfo):
+    return functools.partial(DateTimeIterable, tzinfo=tzinfo)
+
+
+class DateIterable(BaseIterable):
+    def __iter__(self):
+        result = self.queryset.fetch()
+        for item in result:
+            yield datetime.strptime(item, '%Y-%m-%d').date()
 
 
 class RpcBaseQuerySet(object):
@@ -60,7 +99,7 @@ class RpcBaseQuerySet(object):
         # noinspection PyTypeChecker
         clone.__trace = self.__trace + (new_trace,)
         if iterable:
-            setattr(clone, '_iterable_class', globals()[iterable])
+            clone._iterable_class = iterable
         return clone
 
     def _clone(self):
@@ -170,16 +209,25 @@ class RpcBaseQuerySet(object):
         result = client.delete(opts.app_label, opts.name, self.rpc_trace)
         return result
 
-    def bulk_create(self, objs, batch_size=None):
-        # FIXME: batch_size support
+    def bulk_create(self, objects, batch_size=None):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
-        fields = self._get_fields(objs[0])
-        data = [dict_filter(obj.__dict__, fields) for obj in objs]
-        results = client.insert(opts.app_label, opts.name, data, fields)
-        for obj, inserted in zip(objs, results):
-            obj.__dict__.update(inserted)
-        return objs
+        fields = self._get_fields(objects[0])
+
+        total = len(objects)
+        batch_size = batch_size or total
+        offset = 0
+        inserted = []
+        while offset < total:
+            inserting = objects[offset: offset + batch_size]
+            data = [dict_filter(obj.__dict__, fields)
+                    for obj in inserting]
+            results = client.insert(opts.app_label, opts.name, data, fields)
+            for obj, res in zip(inserting, results):
+                obj.__dict__.update(res)
+            inserted.extend(inserting)
+            offset += batch_size
+        return inserted
 
     def get_or_create(self, *args, **kwargs):
         rpc = self.model.Rpc
@@ -207,6 +255,27 @@ class RpcBaseQuerySet(object):
 
     def _get_pk_field(self):
         return self.model.Rpc.pk_field
+
+    def datetimes(self, *args, **kwargs):
+        tzinfo = kwargs.pop('tzinfo', pytz.utc)
+        qs = self._trace('datetimes', args, kwargs,
+                         iterable=TZDateTimeIterable(tzinfo))
+        qs._return_native = True
+        return qs
+
+    # noinspection PyUnusedLocal
+    def in_bulk(self, *args, **kwargs):
+        objects = list(self.iterator())
+        pk_name = self._get_pk_field()
+        return {getattr(obj, pk_name): obj for obj in objects}
+
+    # noinspection PyUnusedLocal
+    def as_manager(self, *args, **kwargs):
+        base_manager = type(self.model.objects)
+        manager_class = type("ManagerFromQuerySet",
+                             (base_manager,),
+                             {'_queryset_class': type(self)})
+        return manager_class()
 
 
 class RpcQuerySet(RpcBaseQuerySet):
@@ -244,25 +313,22 @@ class RpcQuerySet(RpcBaseQuerySet):
     def distinct(self, *args, **kwargs):
         pass
 
-    @utils.values_queryset_method
+    @utils.values_queryset_method(ValuesIterable)
     def values(self, *args, **kwargs):
         pass
 
-    @utils.values_queryset_method
+    @utils.values_queryset_method(ValuesIterable)
     def values_list(self, *args, **kwargs):
         pass
 
-    @utils.values_queryset_method
+    @utils.values_queryset_method(DateIterable)
     def dates(self, *args, **kwargs):
         pass
 
-    @utils.values_queryset_method
-    def datetimes(self, *args, **kwargs):
-        pass
+    datetimes = RpcBaseQuerySet.datetimes
 
-    @utils.queryset_method
+    @utils.values_queryset_method(EmptyIterable)
     def none(self, *args, **kwargs):
-        # FIXME: implement correct EmptyQuerySet behavior without rpc calls
         pass
 
     @utils.queryset_method
@@ -317,8 +383,7 @@ class RpcQuerySet(RpcBaseQuerySet):
     def count(self, *args, **kwargs):
         pass
 
-    def in_bulk(self, *args, **kwargs):
-        pass
+    in_bulk = RpcBaseQuerySet.in_bulk
 
     iterator = RpcBaseQuerySet.iterator
 
@@ -350,10 +415,4 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     delete = RpcBaseQuerySet.delete
 
-    # noinspection PyUnusedLocal
-    def as_manager(self, *args, **kwargs):
-        base_manager = type(self.model.objects)
-        manager_class = type("ManagerFromQuerySet",
-                             (base_manager,),
-                             {'_queryset_class': type(self)})
-        return manager_class()
+    as_manager = RpcBaseQuerySet.as_manager

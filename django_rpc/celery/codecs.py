@@ -93,23 +93,6 @@ class RpcJsonDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
         kwargs['object_hook'] = self._object_hook
         super(RpcJsonDecoder, self).__init__(*args, **kwargs)
-        self.parse_array = self._parse_array
-        self.scan_once = scanner.py_make_scanner(self)
-
-    def _parse_array(self, *args, **kwargs):
-        res, end = JSONArray(*args, **kwargs)
-        return self._array_hook(res), end
-
-    def _array_hook(self, val):
-        for i, v in enumerate(val):
-            if isinstance(v, list):
-                val[i] = self._array_hook(v)
-                continue
-            new = self._parse_type(v)
-            if new is NotImplemented:
-                continue
-            val[i] = new
-        return val
 
     def _object_hook(self, val):
         """ Iterate through dict for additional conversion.

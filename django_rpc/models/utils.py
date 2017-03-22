@@ -31,13 +31,15 @@ def value_method(func):
     return inner
 
 
-def values_queryset_method(func):
-    @functools.wraps(func)
-    def inner(self, *args, **kwargs):
-        qs = self._trace(func.__name__, args, kwargs, iterable='ValuesIterable')
-        qs._return_native = True
-        return qs
-    return inner
+def values_queryset_method(iterable):
+    def wrapper(func):
+        @functools.wraps(func)
+        def inner(self, *args, **kwargs):
+            qs = self._trace(func.__name__, args, kwargs, iterable=iterable)
+            qs._return_native = True
+            return qs
+        return inner
+    return wrapper
 
 
 def manager_method(func):
