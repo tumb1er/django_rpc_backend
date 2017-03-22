@@ -62,29 +62,20 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         # noinspection PyProtectedMember
         return self.model._meta.pk.attname
 
-    def get_or_create(self, *args, **kwargs):
+    def _get_or_update_or_create(self, args, kwargs, update=False):
         assert not args, "args not supported for create"
-
         rpc = self.model.Rpc
         client = RpcClient.from_db(rpc.db)
         data, created = client.get_or_create(
-            rpc.app_label, rpc.name, kwargs)
-
-        instance = self._instantiate(data)
-
+            rpc.app_label, rpc.name, kwargs, update=update)
+        instance = self.instantiate(data)
         return instance, created
+
+    def get_or_create(self, *args, **kwargs):
+        return self._get_or_update_or_create(args, kwargs, update=False)
 
     def update_or_create(self, *args, **kwargs):
-        assert not args, "args not supported for create"
-
-        rpc = self.model.Rpc
-        client = RpcClient.from_db(rpc.db)
-        data, created = client.get_or_create(
-            rpc.app_label, rpc.name, kwargs, update=True)
-
-        instance = self._instantiate(data)
-
-        return instance, created
+        return self._get_or_update_or_create(args, kwargs, update=True)
 
     def select_for_update(self, *args, **kwargs):
         raise NotImplementedError()

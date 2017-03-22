@@ -14,8 +14,8 @@ def single_object_method(func):
     def inner(self, *args, **kwargs):
         qs = self._trace(func.__name__, args, kwargs)
         # noinspection PyProtectedMember
-        data = qs._fetch()
-        instance = qs._instantiate(data)
+        data = qs.fetch()
+        instance = qs.instantiate(data)
         return instance
     return inner
 
@@ -26,7 +26,7 @@ def value_method(func):
         qs = self._trace(func.__name__, args, kwargs)
         qs._return_native = True
         # noinspection PyProtectedMember
-        result = qs._fetch()
+        result = qs.fetch()
         return result
     return inner
 
@@ -34,7 +34,7 @@ def value_method(func):
 def values_queryset_method(func):
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
-        qs = self._trace(func.__name__, args, kwargs)
+        qs = self._trace(func.__name__, args, kwargs, iterable='ValuesIterable')
         qs._return_native = True
         return qs
     return inner

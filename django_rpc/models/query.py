@@ -8,29 +8,27 @@ from django_rpc.models import utils
 Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
 
-def dictfilter(d, keys):
-    return {k:v for k, v in d.items() if k in keys}
+def dict_filter(d, keys):
+    return {k: v for k, v in d.items() if k in keys}
 
 
 class BaseIterable(object):
     def __init__(self, queryset):
+        """
+        :type queryset: RpcBaseQuerySet 
+        """
         self.queryset = queryset
 
     def __iter__(self):
-        result = self.queryset._fetch()
+        result = self.queryset.fetch()
         for item in result:
-            if self.queryset._return_native:
-                yield item
-                continue
-            obj = self.queryset._instantiate(item)
-            for f in self.queryset._exclude_fields:
-                if hasattr(obj, f):
-                    delattr(obj, f)
-            if self.queryset._field_list:
-                for k in list(obj.__dict__.keys()):
-                    if k not in self.queryset._field_list:
-                        delattr(obj, k)
-            yield obj
+            yield self.queryset.instantiate(item)
+
+
+class ValuesIterable(BaseIterable):
+    def __iter__(self):
+        result = self.queryset.fetch()
+        return iter(result)
 
 
 class RpcBaseQuerySet(object):
@@ -40,7 +38,8 @@ class RpcBaseQuerySet(object):
         '_return_native',
         '_field_list',
         '_extra_fields',
-        '_exclude_fields'
+        '_exclude_fields',
+        '_iterable_class'
     ]
 
     _iterable_class = BaseIterable
@@ -55,11 +54,13 @@ class RpcBaseQuerySet(object):
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
-    def _trace(self, method, args, kwargs):
+    def _trace(self, method, args, kwargs, iterable=None):
         clone = self._clone()
         new_trace = Trace(method, args, kwargs)
         # noinspection PyTypeChecker
         clone.__trace = self.__trace + (new_trace,)
+        if iterable:
+            setattr(clone, '_iterable_class', globals()[iterable])
         return clone
 
     def _clone(self):
@@ -95,12 +96,19 @@ class RpcBaseQuerySet(object):
         self._fetch_all()
         return iter(self._result_cache)
 
-    def _instantiate(self, data):
+    def instantiate(self, data):
         obj = self.model()
         obj.__dict__.update(data)
+        for f in self._exclude_fields:
+            if hasattr(obj, f):
+                delattr(obj, f)
+        if self._field_list:
+            for k in list(obj.__dict__.keys()):
+                if k not in self._field_list:
+                    delattr(obj, k)
         return obj
 
-    def _fetch(self):
+    def fetch(self):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
         result = client.fetch(opts.app_label, opts.name, self.__trace,
@@ -167,7 +175,7 @@ class RpcBaseQuerySet(object):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
         fields = self._get_fields(objs[0])
-        data = [dictfilter(obj.__dict__, fields) for obj in objs]
+        data = [dict_filter(obj.__dict__, fields) for obj in objs]
         results = client.insert(opts.app_label, opts.name, data, fields)
         for obj, inserted in zip(objs, results):
             obj.__dict__.update(inserted)
@@ -179,7 +187,7 @@ class RpcBaseQuerySet(object):
         assert not args, "args not supported for create"
         data, created = client.get_or_create(
             rpc.app_label, rpc.name, kwargs)
-        instance = self._instantiate(data)
+        instance = self.instantiate(data)
 
         return instance, created
 
@@ -189,7 +197,7 @@ class RpcBaseQuerySet(object):
         assert not args, "args not supported for create"
         data, created = client.get_or_create(
             rpc.app_label, rpc.name, kwargs, update=True)
-        instance = self._instantiate(data)
+        instance = self.instantiate(data)
 
         return instance, created
 
