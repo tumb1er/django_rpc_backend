@@ -6,17 +6,21 @@ from django.db.models import QuerySet, Model
 from rest_framework import serializers
 
 
+# noinspection PyAbstractClass
 class BaseRpcTask(celery.Task):
     abstract = True
 
-    @staticmethod
-    def serialize(qs, **kwargs):
+    def serialize(self, qs, **kwargs):
 
         extra_fields = kwargs.get('extra_fields', ())
 
         class Meta:
             model = kwargs.get('model') or qs.model
             fields = kwargs.get('fields', '__all__')
+
+        if Meta.fields == '__all__':
+            # fix related objects attribute names
+            Meta.fields = self.get_fields(Meta.model)
 
         attrs = {'Meta': Meta}
         attrs.update({k: serializers.ReadOnlyField() for k in extra_fields})
@@ -27,7 +31,13 @@ class BaseRpcTask(celery.Task):
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
-    def trace_queryset(self, qs, trace):
+    @staticmethod
+    def get_fields(model):
+        # noinspection PyProtectedMember
+        return [f.attname for f in model._meta.fields]
+
+    @staticmethod
+    def trace_queryset(qs, trace):
         for method, args, kwargs in trace:
             qs = getattr(qs, method)(*args, **kwargs)
             if not isinstance(qs, (QuerySet, Model)):
@@ -35,6 +45,7 @@ class BaseRpcTask(celery.Task):
         return qs
 
 
+# noinspection PyAbstractClass
 class FetchTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace, fields=None,
@@ -47,8 +58,7 @@ class FetchTask(BaseRpcTask):
         fields = list(fields or [])
 
         if extra_fields or exclude_fields or not fields:
-            fields = ([f.attname for f in model._meta.fields] +
-                      list(extra_fields))
+            fields = self.get_fields(model) + list(extra_fields)
 
         fields = [f for f in fields + extra_fields
                   if f not in exclude_fields] or '__all__'
@@ -62,6 +72,7 @@ class FetchTask(BaseRpcTask):
                               extra_fields=extra_fields)
 
 
+# noinspection PyAbstractClass
 class InsertTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, rpc_data, rpc_fields,
@@ -69,8 +80,8 @@ class InsertTask(BaseRpcTask):
 
         class Serializer(serializers.ModelSerializer):
             class Meta:
-                fields = '__all__'
                 model = apps.get_model(module_name, class_name)
+                fields = self.get_fields(model)
 
         s = Serializer(data=rpc_data, many=True)
         if s.is_valid(raise_exception=True):
@@ -80,6 +91,7 @@ class InsertTask(BaseRpcTask):
             return s.data
 
 
+# noinspection PyAbstractClass
 class UpdateTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace, updates):
@@ -90,6 +102,7 @@ class UpdateTask(BaseRpcTask):
         return qs.update(**updates)
 
 
+# noinspection PyAbstractClass
 class DeleteTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace):
@@ -100,8 +113,10 @@ class DeleteTask(BaseRpcTask):
         return qs.delete()
 
 
+# noinspection PyAbstractClass
 class GetOrCreateTask(BaseRpcTask):
 
+    # noinspection PyShadowingNames
     def __call__(self, module_name, class_name, kwargs, update=False):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
@@ -114,26 +129,31 @@ class GetOrCreateTask(BaseRpcTask):
         return data, created
 
 
+# noinspection PyUnusedLocal
 @celery.task(base=FetchTask, bind=True, shared=True, name='django_rpc.fetch')
 def fetch(*args, **kwargs):
     pass
 
 
+# noinspection PyUnusedLocal
 @celery.task(base=InsertTask, bind=True, shared=True, name='django_rpc.insert')
 def insert(*args, **kwargs):
     pass
 
 
+# noinspection PyUnusedLocal
 @celery.task(base=UpdateTask, bind=True, shared=True, name='django_rpc.update')
 def update(*args, **kwargs):
     pass
 
 
+# noinspection PyUnusedLocal
 @celery.task(base=DeleteTask, bind=True, shared=True, name='django_rpc.delete')
 def delete(*args, **kwargs):
     pass
 
 
+# noinspection PyUnusedLocal
 @celery.task(base=GetOrCreateTask, bind=True, shared=True,
              name='django_rpc.get_or_create')
 def get_or_create(*args, **kwargs):

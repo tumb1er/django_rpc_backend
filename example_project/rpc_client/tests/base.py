@@ -1,5 +1,5 @@
 # coding: utf-8
-from unittest import TestCase, expectedFailure
+from unittest import TestCase
 
 import pytz
 from celery import Task
@@ -128,10 +128,10 @@ class QuerySetTestsMixin(TestCase):
 
     def testDateTimesTZInfo(self):
         tz = pytz.timezone('Europe/Moscow')
-        data = list(self.client_model.objects.datetimes('dt_field', 'minute',
-                                                        tzinfo=tz))
-        expected = list(self.server_model.objects.datetimes('dt_field', 'minute',
-                                                            tzinfo=tz))
+        data = list(self.client_model.objects.datetimes(
+            'dt_field', 'minute', tzinfo=tz))
+        expected = list(self.server_model.objects.datetimes(
+            'dt_field', 'minute', tzinfo=tz))
         self.assertListEqual(data, expected)
 
     def testNone(self):

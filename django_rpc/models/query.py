@@ -137,7 +137,7 @@ class RpcBaseQuerySet(object):
 
     def instantiate(self, data):
         obj = self.model()
-        obj.__dict__.update(data)
+        self.update_model(obj, data)
         for f in self._exclude_fields:
             if hasattr(obj, f):
                 delattr(obj, f)
@@ -224,10 +224,14 @@ class RpcBaseQuerySet(object):
                     for obj in inserting]
             results = client.insert(opts.app_label, opts.name, data, fields)
             for obj, res in zip(inserting, results):
-                obj.__dict__.update(res)
+                self.update_model(obj, res)
             inserted.extend(inserting)
             offset += batch_size
         return inserted
+
+    # noinspection PyMethodMayBeStatic
+    def update_model(self, obj, data):
+        obj.__dict__.update(data)
 
     def get_or_create(self, *args, **kwargs):
         rpc = self.model.Rpc
@@ -377,7 +381,7 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     update_or_create = RpcBaseQuerySet.update_or_create
 
-    bulk_update = RpcBaseQuerySet.bulk_create
+    bulk_create = RpcBaseQuerySet.bulk_create
 
     @utils.value_method
     def count(self, *args, **kwargs):
