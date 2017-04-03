@@ -14,6 +14,7 @@ class ClientModel(RpcModel):
 
 
 class NativeQuerySetTestCase(TestCase):
+    # noinspection PyUnresolvedReferences
     def setUp(self):
         self._patchers = []
         self.rpc_client = RpcClient.from_db(ClientModel.Rpc.db)
@@ -36,7 +37,7 @@ class NativeQuerySetTestCase(TestCase):
 
     def testQuerySetCreate(self):
         self.fetch_mock.return_value.get.return_value = 2
-        c = ClientModel.objects.create(a=1)
+        ClientModel.objects.create(a=1)
         self.assertRpcInsertCall(ClientModel, [{'a': 1}])
 
     def assertRpcFetchCall(self, model, *trace):

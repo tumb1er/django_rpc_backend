@@ -157,6 +157,11 @@ class RpcBaseQuerySet(object):
                               native=self._return_native)
         return result
 
+    def select_related(self, *args, **kwargs):
+        qs = self._trace('select_related', args, kwargs)
+        qs._extra_fields += tuple(args)
+        return qs
+
     def extra(self, *args, **kwargs):
         qs = self._trace('extra', args, kwargs)
         select = kwargs.get('select')
@@ -339,9 +344,7 @@ class RpcQuerySet(RpcBaseQuerySet):
     def all(self, *args, **kwargs):
         pass
 
-    @utils.queryset_method
-    def select_related(self, *args, **kwargs):
-        pass
+    select_related = RpcBaseQuerySet.select_related
 
     @utils.queryset_method
     def prefetch_related(self, *args, **kwargs):

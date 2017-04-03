@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import six
 from django.conf import settings
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models, router
 from rest_framework import serializers
 
@@ -52,6 +53,22 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         models.QuerySet.__init__(self, model=model, query=query, using=using,
                                  hints=hints)
         self._iterable_class = RpcQuerySet._iterable_class
+
+    def update_model(self, obj, data):
+        patched = {}
+        for k, v in data.items():
+            try:
+                f = self.model._meta.get_field(k)
+            except FieldDoesNotExist:
+                f = None
+            if f and f.is_relation and f.name == k:
+                cache_name = f.get_cache_name()
+                qs = f.related_model.objects.get_queryset()
+                related_obj = qs.instantiate(v)
+                patched[cache_name] = related_obj
+            else:
+                patched[k] = v
+        super().update_model(obj, patched)
 
     @staticmethod
     def _get_fields(obj):

@@ -48,6 +48,14 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
         cls.celery.terminate()
         cls.rpc_client._app.conf['CELERY_ALWAYS_EAGER'] = cls.eager
 
+    def testSelectRelated(self):
+        qs = self.client_model.objects.filter(pk=1).select_related('fk')
+        c = list(qs)[0]  # FIXME: qs.__getitem__
+        s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
+        self.assertTrue(hasattr(c, 'fk'))
+        del s.fk._state
+        self.assertDictEqual(c.fk, s.fk.__dict__)
+
 
 def start_celery(argv):
     cmd = CeleryCommand()

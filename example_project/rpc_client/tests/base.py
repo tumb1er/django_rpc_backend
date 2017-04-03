@@ -54,7 +54,12 @@ class BaseRpcTestCase(TestCase):
 class QuerySetTestsMixin(TestCase):
     client_model = None  # type: Type[RpcModel]
     server_model = None
-    """ :type server_model: rpc_server.models.ServerModel"""
+    fk_model = None
+    """ 
+    :type server_model: rpc_server.models.ServerModel
+    :type fk_model: rpc_server.models.FKModel
+    
+    """
 
     # noinspection PyProtectedMember
     def assertObjectsEqual(self, o1, o2):
@@ -145,8 +150,11 @@ class QuerySetTestsMixin(TestCase):
         self.assertQuerySetEqual(qs, expected)
 
     def testSelectRelated(self):
-        # FIXME: сериализация связанных объектов
-        self.skipTest("TBD: QuerySet.select_related")
+        qs = self.client_model.objects.filter(pk=1).select_related('fk')
+        c = list(qs)[0]
+        s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
+        self.assertTrue(hasattr(c, 'fk'))
+        self.assertObjectsEqual(c.fk, s.fk)
 
     def testPrefetchRelated(self):
         # FIXME: сериализация связанных объектов

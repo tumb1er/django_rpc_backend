@@ -5,9 +5,9 @@ from django.test import TestCase
 from mock import mock
 
 from django_rpc.models import RpcModel
-from rpc_client.models import ClientModel
+from rpc_client.models import ClientModel, FKClientModel
 from rpc_client.tests import base
-from rpc_server.models import ServerModel
+from rpc_server.models import ServerModel, FKModel
 
 
 class DjangoQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
@@ -21,6 +21,8 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                                 TestCase):
     client_model = ClientModel
     server_model = ServerModel
+    fk_model = FKModel
+    fk_client_model = FKClientModel
     fixtures = ['tests.json']
 
     def setUp(self):
@@ -38,6 +40,7 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
         self._patchers.append(p)
 
         self.client_model._meta.db_table = self.server_model._meta.db_table
+        self.fk_client_model._meta.db_table = self.fk_model._meta.db_table
 
     def testUsing(self):
         qs = self.client_model.objects.using('some_db')
@@ -70,4 +73,10 @@ class NativeQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
     server_model = ServerModel
     fixtures = ['tests.json']
 
-
+    def testSelectRelated(self):
+        qs = self.client_model.objects.filter(pk=1).select_related('fk')
+        c = list(qs)[0]  # FIXME: qs.__getitem__
+        s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
+        self.assertTrue(hasattr(c, 'fk'))
+        del s.fk._state
+        self.assertDictEqual(c.fk, s.fk.__dict__)

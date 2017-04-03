@@ -2,7 +2,7 @@
 
 import celery
 from django.apps.registry import apps
-from django.db.models import QuerySet, Model
+from django.db.models import QuerySet, Model, FieldDoesNotExist
 from rest_framework import serializers
 
 
@@ -23,7 +23,22 @@ class BaseRpcTask(celery.Task):
             Meta.fields = self.get_fields(Meta.model)
 
         attrs = {'Meta': Meta}
-        attrs.update({k: serializers.ReadOnlyField() for k in extra_fields})
+        for k in extra_fields:
+            try:
+                # noinspection PyProtectedMember
+                f = Meta.model._meta.get_field(k)
+            except FieldDoesNotExist:
+                attrs[k] = serializers.ReadOnlyField()
+            else:
+                if not f.is_relation:
+                    attrs[k] = serializers.ReadOnlyField()
+                else:
+                    class NestedMeta:
+                        model = f.related_model
+                        fields = '__all__'
+                    nested = type("Serializer", (serializers.ModelSerializer,),
+                                  {'Meta': NestedMeta})
+                    attrs[k] = nested()
 
         serializer_class = type("Serializer",
                                 (serializers.ModelSerializer,),
@@ -58,7 +73,7 @@ class FetchTask(BaseRpcTask):
         fields = list(fields or [])
 
         if extra_fields or exclude_fields or not fields:
-            fields = self.get_fields(model) + list(extra_fields)
+            fields = self.get_fields(model)
 
         fields = [f for f in fields + extra_fields
                   if f not in exclude_fields] or '__all__'

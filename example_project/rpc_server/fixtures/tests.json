@@ -3,8 +3,10 @@
     "model": "rpc_server.servermodel",
     "pk": 1,
     "fields": {
-      "char_field": "first",
-      "int_field": 1
+        "char_field": "first",
+        "int_field": 1,
+        "dt_field": "2017-03-01T10:55:18.055Z",
+        "fk": 1
     }
   },
   {
@@ -14,5 +16,13 @@
       "char_field": "second",
       "int_field": 2
     }
-  }
+  },
+
+  {
+    "model": "rpc_server.fkmodel",
+    "pk": 1,
+    "fields": {
+        "name": "1"
+    }
+}
 ]

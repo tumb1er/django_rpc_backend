@@ -25,6 +25,10 @@ Django
 - [ ] Поддержка своих кастомных методов
 - [ ] rpc call
 - [ ] SlicedQuerySet
+- [ ] qs.getitem
+- [ ] ForeignKey
+- [ ] OneToMany (Reverse FK)
+- [ ] ManyToMany
 
 Тесты
 -----
