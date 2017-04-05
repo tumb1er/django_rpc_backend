@@ -56,24 +56,11 @@ class BaseRpcTask(celery.Task):
         # noinspection PyProtectedMember
         return [f.attname for f in model._meta.fields]
 
-    @staticmethod
-    def getitem(qs, *args):
-        if len(args) == 1:
-            item = args[0]
-            return qs[item]
-        s = slice(*args)
-        return qs[s]
-
     def trace_queryset(self, qs, trace):
         for method, args, kwargs in trace:
-            try:
-                qs = getattr(qs, method)(*args, **kwargs)
-                if not isinstance(qs, (QuerySet, Model)):
-                    break
-            except AttributeError:
-                if method == 'getitem':
-                    return self.getitem(qs, *args)
-                raise
+            qs = getattr(qs, method)(*args, **kwargs)
+            if not isinstance(qs, (QuerySet, Model)):
+                break
         return qs
 
 
@@ -81,7 +68,8 @@ class BaseRpcTask(celery.Task):
 class FetchTask(BaseRpcTask):
 
     def __call__(self, module_name, class_name, trace, fields=None,
-                 extra_fields=None, exclude_fields=None, native=False):
+                 extra_fields=None, exclude_fields=None, native=False,
+                 limits=(0, None)):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
 
@@ -100,6 +88,10 @@ class FetchTask(BaseRpcTask):
             if isinstance(qs, QuerySet):
                 return list(qs)
             return qs
+
+        if tuple(limits) != (0, None):
+            start, stop = limits
+            qs = qs[slice(start, stop)]
         return self.serialize(qs, model=model, fields=fields,
                               extra_fields=extra_fields)
 

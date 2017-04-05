@@ -80,7 +80,8 @@ class RpcBaseQuerySet(object):
         '_related_fields',
         '_prefetch_fields',
         '_exclude_fields',
-        '_iterable_class'
+        '_iterable_class',
+        '_limits'
     ]
 
     _iterable_class = BaseIterable
@@ -94,6 +95,7 @@ class RpcBaseQuerySet(object):
         self._exclude_fields = ()  # qs.defer(), qs.only()
         self._related_fields = ()  # qs.select_related()
         self._prefetch_fields = ()  # qs.prefetch_related()
+        self._limits = (0, None)  # qs[:]
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -139,22 +141,43 @@ class RpcBaseQuerySet(object):
         self._fetch_all()
         return iter(self._result_cache)
 
+    def _set_limits(self, low=None, high=None):
+        low_mark, high_mark = self._limits
+
+        if high is not None:
+            if high_mark is not None:
+                high_mark = min(high_mark, low_mark + high)
+            else:
+                high_mark = low_mark + high
+        if low is not None:
+            if high_mark is not None:
+                low_mark = min(high_mark, low_mark + low)
+            else:
+                low_mark = low_mark + low
+
+        self._limits = low_mark, high_mark
+
     def __getitem__(self, item):
         """
         :type item: int | slice
         """
         if self._result_cache is not None:
             return self._result_cache[item]
+
+        qs = self._clone()
         if not isinstance(item, slice):
-            single_object = True
-            item = slice(item, item + 1)
-        else:
-            single_object = False
+            qs._set_limits(item, item + 1)
+            return list(qs)[0]
 
-        qs = self._trace('getitem', (item.start, item.stop), {})
-        qs._fetch_all()
+        qs._set_limits(item.start, item.stop)
+        start, stop = qs._limits
+        if start == stop:
+            qs._iterable_class = EmptyIterable
+        return qs
 
-        return qs[0] if single_object else qs
+    def __len__(self):
+        self._fetch_all()
+        return len(self._result_cache)
 
     def instantiate(self, data):
         obj = self.model()
@@ -177,7 +200,8 @@ class RpcBaseQuerySet(object):
                               fields=self._field_list or None,
                               extra_fields=extra_fields,
                               exclude_fields=self._exclude_fields,
-                              native=self._return_native)
+                              native=self._return_native,
+                              limits=self._limits)
         return result
 
     def annotate(self, *args, **kwargs):

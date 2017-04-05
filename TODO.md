@@ -24,8 +24,8 @@ Django
 - [ ] Переопределение сериалайзера для запроса
 - [ ] Поддержка своих кастомных методов
 - [ ] rpc call
-- [ ] SlicedQuerySet
-- [ ] qs.getitem, qs.len
+- [x] SlicedQuerySet
+- [x] qs.getitem, qs.len
 - [x] ForeignKey
 - [ ] OneToMany (Reverse FK)
 - [ ] ManyToMany
@@ -58,4 +58,3 @@ FIXME
 * bulk_create на серверной стороне совсем не bulk. См. ListSerializer.create
 * model.delete и save на серверной стороне должны отправлять соответствующие 
 сигналы
-* `len(qs)` и `qs[0]` не работают

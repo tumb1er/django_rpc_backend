@@ -152,7 +152,7 @@ class QuerySetTestsMixin(TestCase):
         self.assertListEqual(data, expected)
 
     def testNone(self):
-        with mock.patch('celery.app.task.Task.apply_async') as apply:
+        with self.mock_celery_task() as apply:
             qs = self.client_model.objects.none()
             self.assertListEqual(list(qs), [])
         self.assertFalse(apply.called)
@@ -429,23 +429,41 @@ class QuerySetTestsMixin(TestCase):
         self.assertFalse(self.server_model.objects.filter(id=c.id).exists())
 
     def testGetItem(self):
-        kw = self.s1.__dict__.copy()
-        del kw['id']
-        del kw['_state']
-        s = self.server_model(**kw)
-        self.server_model.objects.bulk_create([s] * 5)
+        self.clone(self.s1, 5)
 
         d = self.client_model.objects.all()[2]
         e = self.server_model.objects.all()[2]
         self.assertObjectsEqual(d, e)
 
     def testSlice(self):
-        kw = self.s1.__dict__.copy()
-        del kw['id']
-        del kw['_state']
-        s = self.server_model(**kw)
-        self.server_model.objects.bulk_create([s] * 5)
-
-        d = self.client_model.objects.all()[2: 5]
+        self.clone(self.s1, 5)
+        with self.mock_celery_task() as apply:
+            d = self.client_model.objects.all()[2: 5]
+        self.assertFalse(apply.called)
         e = self.server_model.objects.all()[2: 5]
         self.assertQuerySetEqual(d, e)
+
+    def testSlicedQueryset(self):
+        self.clone(self.s1, 5)
+        with self.mock_celery_task() as apply:
+            d = self.client_model.objects.all()[2: 5][1: 2]
+        self.assertFalse(apply.called)
+        e = self.server_model.objects.all()[2: 5][1: 2]
+        self.assertQuerySetEqual(list(d), list(e))
+
+    def testLen(self):
+        self.clone(self.s1, 5)
+        d = len(self.client_model.objects.all())
+        e = len(self.server_model.objects.all())
+        self.assertEqual(d, e)
+
+    def clone(self, obj, count):
+        kw = obj.__dict__.copy()
+        del kw['id']
+        del kw['_state']
+        s = type(obj)(**kw)
+        self.server_model.objects.bulk_create([s] * count)
+
+    @staticmethod
+    def mock_celery_task():
+        return mock.patch('celery.app.task.Task.apply_async')
