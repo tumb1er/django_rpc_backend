@@ -4,8 +4,7 @@ try:
     from .django import *
 
     __all__ = list(django.__all__)
-
-except Exception as e:
+except ImportError:
     __all__ = []
 
 from .base import RpcModel

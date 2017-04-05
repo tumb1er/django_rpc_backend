@@ -4,9 +4,7 @@ from __future__ import absolute_import
 
 import six
 from django.conf import settings
-from django.core.exceptions import FieldDoesNotExist
 from django.db import models, router
-from rest_framework import serializers
 
 from django_rpc.celery import defaults
 from django_rpc.celery.client import RpcClient
@@ -35,14 +33,6 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
             return
 
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
-
-
-class NativeField(serializers.Field):
-    def to_representation(self, value):
-        return value
-
-    def to_internal_value(self, data):
-        return data
 
 
 class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):

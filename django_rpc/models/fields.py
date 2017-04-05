@@ -23,12 +23,13 @@ class ReverseFKDescriptor(object):
         if not instance:
             return self
         try:
+            # noinspection PyProtectedMember
             return instance._prefetched_objects_cache[self.name]
         except (AttributeError, KeyError):
             return self.model.objects.filter(pk=getattr(instance, self.fk_name))
 
     def __set__(self, instance, value):
-        raise RuntimeError("Setting reverse descriptor not allowed")
+        raise NotImplementedError("Setting reverse descriptor not allowed")
 
     def set(self, instance, data):
         qs = self.model.objects.get_queryset()

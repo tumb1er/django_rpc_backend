@@ -99,7 +99,8 @@ class QuerySetTestsMixin(TestCase):
 
     def testDistinct(self):
         data = list(self.client_model.objects.values('int_field').distinct())
-        expected = list(self.server_model.objects.values('int_field').distinct())
+        expected = list(self.server_model.objects.values(
+            'int_field').distinct())
         self.assertEqual(len(data), len(expected))
         for d, e in zip(data, expected):
             self.assertDictEqual(d, e)
@@ -146,9 +147,10 @@ class QuerySetTestsMixin(TestCase):
         self.assertListEqual(data, expected)
 
     def testNone(self):
-        # FIXME: убрать вызов fetch task
-        qs = self.client_model.objects.none()
-        self.assertListEqual(list(qs), [])
+        with mock.patch('celery.app.task.Task.apply_async') as apply:
+            qs = self.client_model.objects.none()
+            self.assertListEqual(list(qs), [])
+        self.assertFalse(apply.called)
 
     def testAll(self):
         qs = self.client_model.objects.all()
@@ -174,20 +176,34 @@ class QuerySetTestsMixin(TestCase):
     def testPrefetchRelated(self):
         ss = self.fk_model.objects.filter(pk=1)
         qs = self.fk_client_model.objects.filter(pk=1)
-        fk = list(qs)[0]
+        d = list(qs)[0]
         self.assertFalse(hasattr(ss[0], '_prefetched_objects_cache'))
-        self.assertFalse(hasattr(fk, '_prefetched_objects_cache'))
+        self.assertFalse(hasattr(d, '_prefetched_objects_cache'))
 
         ss = ss.prefetch_related('servermodel_set')
         qs = qs.prefetch_related('servermodel_set')
 
-        fk = list(qs)[0]
-        self.assertTrue(hasattr(ss[0], '_prefetched_objects_cache'))
-        self.assertIs(ss[0]._prefetched_objects_cache['servermodel'].model,
+        d = list(qs)[0]
+        e = ss[0]
+        self.assertTrue(hasattr(e, '_prefetched_objects_cache'))
+        self.assertIs(e._prefetched_objects_cache['servermodel'].model,
                       self.server_model)
-        self.assertTrue(hasattr(fk, '_prefetched_objects_cache'))
-        self.assertIs(fk._prefetched_objects_cache['servermodel'].model,
+        self.assertTrue(hasattr(d, '_prefetched_objects_cache'))
+        self.assertIs(d._prefetched_objects_cache['servermodel'].model,
                       self.client_model)
+
+        del d._prefetched_objects_cache
+        del e._prefetched_objects_cache
+        self.assertObjectsEqual(d, e)
+
+    def testClearPrefetchRelated(self):
+        qs = self.fk_client_model.objects.filter(pk=1)
+        c = list(qs)[0]
+        self.assertFalse(hasattr(c, '_prefetched_objects_cache'))
+        qs = qs.prefetch_related('servermodel_set')
+        qs = qs.prefetch_related(None)
+        c = list(qs)[0]
+        self.assertFalse(hasattr(c, '_prefetched_objects_cache'))
 
     def testExtra(self):
         qs = self.client_model.objects.extra(select={'some': '%s + %s'},

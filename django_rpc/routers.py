@@ -6,7 +6,7 @@ RPC_DATABASE_NAME = getattr(settings, 'RPC_DATABASE_NAME', 'rpc')
 
 class RpcRouter(object):
     """
-    Routes database operations for Sphinx model to the sphinx database connection.
+    Routes database operations for rpc models to corresponding rpc connections.
     """
 
     @staticmethod
@@ -20,21 +20,25 @@ class RpcRouter(object):
                   type(model) is DjangoRpcModelBase)
         return is_rpc
 
+    # noinspection PyUnusedLocal
     def db_for_read(self, model, **kwargs):
         if self.is_rpc_model(model):
             return RPC_DATABASE_NAME
 
+    # noinspection PyUnusedLocal
     def db_for_write(self, model, **kwargs):
         if self.is_rpc_model(model):
             return RPC_DATABASE_NAME
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def allow_relation(self, obj1, obj2, **kwargs):
         # Allow all relations...
         return True
 
+    # noinspection PyUnusedLocal
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if db == RPC_DATABASE_NAME:
             return False
         if self.is_rpc_model(hints.get('model')):
             return False
-        pass
+        return None

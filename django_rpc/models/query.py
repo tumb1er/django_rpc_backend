@@ -211,16 +211,6 @@ class RpcBaseQuerySet(object):
             qs._field_list = args
         return qs
 
-    def create(self, *args, **kwargs):
-        opts = self.model.Rpc
-        client = RpcClient.from_db(opts.db)
-        assert not args, "args not supported for create"
-        fields = list(kwargs.keys())
-        data = [kwargs]
-        result = client.insert(opts.app_label, opts.name, data, fields,
-                               return_id=True)
-        return result
-
     def update(self, *args, **kwargs):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
@@ -329,47 +319,47 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     @utils.queryset_method
     def filter(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.queryset_method
     def exclude(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     annotate = RpcBaseQuerySet.annotate
 
     @utils.queryset_method
     def order_by(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.queryset_method
     def reverse(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.queryset_method
     def distinct(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.values_queryset_method(ValuesIterable)
     def values(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.values_queryset_method(ValuesIterable)
     def values_list(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.values_queryset_method(DateIterable)
     def dates(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     datetimes = RpcBaseQuerySet.datetimes
 
     @utils.values_queryset_method(EmptyIterable)
     def none(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.queryset_method
     def all(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     select_related = RpcBaseQuerySet.select_related
 
@@ -399,11 +389,11 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     @utils.single_object_method
     def get(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.single_object_method
     def create(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     get_or_create = RpcBaseQuerySet.get_or_create
 
@@ -413,7 +403,7 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     @utils.value_method
     def count(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     in_bulk = RpcBaseQuerySet.in_bulk
 
@@ -421,27 +411,27 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     @utils.single_object_method
     def latest(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.single_object_method
     def earliest(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.single_object_method
     def first(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.single_object_method
     def last(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.value_method
     def aggregate(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     @utils.value_method
     def exists(self, *args, **kwargs):
-        pass
+        pass  # pragma: nocover
 
     update = RpcBaseQuerySet.update
 

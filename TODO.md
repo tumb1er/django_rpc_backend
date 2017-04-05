@@ -4,7 +4,7 @@ TODO
 QuerySet
 --------
 
-- [ ] Полное покрытие QuerySet API
+- [x] Полное покрытие QuerySet API
 - [x] Декораторы для финальных методов QuerySet API (возвращающих объекты)
 - [ ] get_set etc... - расширение функционала QuerySet
 - [ ] Future
