@@ -5,6 +5,7 @@ from django.test import TestCase
 from mock import mock
 
 from django_rpc.models import RpcModel
+from django_rpc.models.fields import ForeignKey
 from rpc_client.models import ClientModel, FKClientModel
 from rpc_client.tests import base
 from rpc_server.models import ServerModel, FKModel
@@ -61,22 +62,24 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
             p.stop()
 
 
+class NativeFKModel(RpcModel):
+    class Rpc:
+        app_label = 'rpc_server'
+        name = 'FKModel'
+
+
 class NativeModel(RpcModel):
     class Rpc:
         app_label = 'rpc_server'
         name = 'ServerModel'
+
+    fk = ForeignKey(NativeFKModel)
 
 
 class NativeQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                              TestCase):
     client_model = NativeModel
     server_model = ServerModel
+    fk_client_model = NativeFKModel
+    fk_model = FKModel
     fixtures = ['tests.json']
-
-    def testSelectRelated(self):
-        qs = self.client_model.objects.filter(pk=1).select_related('fk')
-        c = list(qs)[0]  # FIXME: qs.__getitem__
-        s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
-        self.assertTrue(hasattr(c, 'fk'))
-        del s.fk._state
-        self.assertDictEqual(c.fk, s.fk.__dict__)

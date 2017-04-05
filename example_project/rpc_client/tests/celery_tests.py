@@ -8,8 +8,8 @@ from django.test import TestCase
 
 from django_rpc.celery.app import celery
 from django_rpc.celery.client import RpcClient
-from rpc_client.tests import base, NativeModel
-from rpc_server.models import ServerModel
+from rpc_client.tests import base, NativeModel, NativeFKModel
+from rpc_server.models import ServerModel, FKModel
 
 
 def use_file_sqlite():
@@ -26,6 +26,8 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                            TestCase):
     client_model = NativeModel
     server_model = ServerModel
+    fk_client_model = NativeFKModel
+    fk_model = FKModel
     fixtures = ['tests.json']
 
     @classmethod
@@ -47,14 +49,6 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
         super().tearDownClass()
         cls.celery.terminate()
         cls.rpc_client._app.conf['CELERY_ALWAYS_EAGER'] = cls.eager
-
-    def testSelectRelated(self):
-        qs = self.client_model.objects.filter(pk=1).select_related('fk')
-        c = list(qs)[0]  # FIXME: qs.__getitem__
-        s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
-        self.assertTrue(hasattr(c, 'fk'))
-        del s.fk._state
-        self.assertDictEqual(c.fk, s.fk.__dict__)
 
 
 def start_celery(argv):

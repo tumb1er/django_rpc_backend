@@ -154,7 +154,7 @@ class QuerySetTestsMixin(TestCase):
         qs = self.client_model.objects.filter(pk=1).select_related('fk')
         c = list(qs)[0]
         s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
-        self.assertTrue(hasattr(c, 'fk'))
+        self.assertTrue(hasattr(c, '_fk_cache'))
         self.assertObjectsEqual(c.fk, s.fk)
 
     def testClearSelectRelated(self):

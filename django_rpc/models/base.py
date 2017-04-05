@@ -17,9 +17,17 @@ class RpcModelBase(type):
         try:
             # Django manager already done this
             manager = getattr(new, 'objects')
+
+            # Reconstruction RpcModel.objects for new class
+            manager = type(manager)()
             manager.contribute_to_class(new, 'objects')
+            setattr(new, 'objects', manager)
         except AttributeError:
             pass
+
+        for k, v in attrs.items():
+            if hasattr(v, 'contribute_to_class'):
+                v.contribute_to_class(new, k)
         return new
 
     def __call__(cls, *args, **kwargs):

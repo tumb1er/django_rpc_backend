@@ -242,7 +242,13 @@ class RpcBaseQuerySet(object):
 
     # noinspection PyMethodMayBeStatic
     def update_model(self, obj, data):
-        obj.__dict__.update(data)
+        model = type(obj)
+        for k, v in data.items():
+            try:
+                descriptor = getattr(model, k)
+                descriptor.set(obj, v)
+            except AttributeError:
+                setattr(obj, k, v)
 
     def get_or_create(self, *args, **kwargs):
         rpc = self.model.Rpc
