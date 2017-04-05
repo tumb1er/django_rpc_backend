@@ -7,6 +7,38 @@ class ForeignKey(object):
 
     def contribute_to_class(self, klass, name):
         setattr(klass, name, ForwardFKDescriptor(self.model, name))
+        model_name = klass.Rpc.name.lower()
+        descriptor_name = '%s_set' % model_name
+        setattr(self.model, descriptor_name,
+                ReverseFKDescriptor(klass, model_name, self.model))
+
+
+class ReverseFKDescriptor(object):
+    def __init__(self, model, name, remote_model):
+        self.model = model
+        self.name = name
+        self.fk_name = remote_model.Rpc.pk_field
+
+    def __get__(self, instance, owner):
+        if not instance:
+            return self
+        try:
+            return instance._prefetched_objects_cache[self.name]
+        except (AttributeError, KeyError):
+            return self.model.objects.filter(pk=getattr(instance, self.fk_name))
+
+    def __set__(self, instance, value):
+        raise RuntimeError("Setting reverse descriptor not allowed")
+
+    def set(self, instance, data):
+        qs = self.model.objects.get_queryset()
+        if not hasattr(instance, '_prefetched_objects_cache'):
+            instance._prefetched_objects_cache = cache = {}
+        else:
+            cache = instance._prefetched_objects_cache
+
+        qs._result_cache = [qs.instantiate(i) for i in data]
+        cache[self.name] = qs
 
 
 class ForwardFKDescriptor(object):
