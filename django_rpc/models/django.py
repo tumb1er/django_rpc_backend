@@ -56,18 +56,28 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
     def update_model(self, obj, data):
         patched = {}
+        cache = {}
+        if self._prefetch_fields:
+            obj._prefetched_objects_cache = cache
         for k, v in data.items():
             try:
-                f = self.model._meta.get_field(k)
-            except FieldDoesNotExist:
-                f = None
-            if f and f.is_relation and f.name == k:
-                cache_name = f.get_cache_name()
-                qs = f.related_model.objects.get_queryset()
-                related_obj = qs.instantiate(v)
-                patched[cache_name] = related_obj
-            else:
+                descriptor = getattr(self.model, k)
+                f = descriptor.field
+                if not f.is_relation:
+                    patched[k] = v
+                elif hasattr(descriptor, 'related_manager_cls'):
+                    manager = descriptor.related_manager_cls(obj)
+                    qs = manager.get_queryset()
+                    qs._result_cache = [qs.instantiate(i) for i in v]
+                    cache[f.remote_field.related_query_name] = qs
+                else:
+                    cache_name = f.get_cache_name()
+                    qs = f.related_model.objects.get_queryset()
+                    related_obj = qs.instantiate(v)
+                    patched[cache_name] = related_obj
+            except AttributeError:
                 patched[k] = v
+
         super().update_model(obj, patched)
 
     @staticmethod

@@ -21,4 +21,5 @@ class ClientModel(DjangoRpcModel):
     int_field = models.IntegerField()
     dt_field = models.DateTimeField(default=now)
     fk = models.ForeignKey('FKClientModel', null=True, blank=True,
-                           related_name='servermodel')
+                           related_name='servermodel_set',
+                           related_query_name='servermodel')

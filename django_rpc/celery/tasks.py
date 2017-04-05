@@ -14,18 +14,23 @@ class BaseRpcTask(celery.Task):
 
         extra_fields = kwargs.get('extra_fields', ())
 
-        class Meta:
-            model = kwargs.get('model') or qs.model
-            fields = kwargs.get('fields', '__all__')
+        model = kwargs.get('model') or qs.model
+        fields = kwargs.get('fields', '__all__')
 
-        if Meta.fields == '__all__':
+        if fields == '__all__':
             # fix related objects attribute names
-            Meta.fields = self.get_fields(Meta.model)
+            fields = self.get_fields(model)
 
+        serializer_class = self.get_serializer_class(model, fields, extra_fields)
+
+        return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
+
+    def get_serializer_class(self, model, fields, extra_fields=()):
+        Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
         for k in extra_fields:
             try:
-                descriptor = getattr(Meta.model, k)
+                descriptor = getattr(model, k)
             except AttributeError:
                 attrs[k] = serializers.ReadOnlyField()
             else:
@@ -34,20 +39,17 @@ class BaseRpcTask(celery.Task):
                     attrs[k] = serializers.ReadOnlyField()
                 else:
                     many = hasattr(descriptor, 'rel')
-                    class NestedMeta:
-                        model = f.model if many else f.related_model
-                        fields = '__all__'
-                    NestedSerializer = type("Serializer",
-                                            (serializers.ModelSerializer,),
-                                            {'Meta': NestedMeta})
+                    model = f.model if many else f.related_model
+                    fields = self.get_fields(model)
+
+                    # noinspection PyPep8Naming
+                    NestedSerializer = self.get_serializer_class(model, fields)
                     nested = NestedSerializer(many=many)
                     attrs[k] = nested
-
         serializer_class = type("Serializer",
                                 (serializers.ModelSerializer,),
                                 attrs)
-
-        return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
+        return serializer_class
 
     @staticmethod
     def get_fields(model):
