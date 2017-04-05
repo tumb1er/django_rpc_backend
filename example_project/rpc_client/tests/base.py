@@ -4,6 +4,7 @@ from unittest import TestCase
 import pytz
 from celery import Task
 from django.db import models
+from django.db.models import Count
 from django.utils.timezone import now
 from mock import mock
 from typing import Type
@@ -84,8 +85,9 @@ class QuerySetTestsMixin(TestCase):
         self.assertQuerySetEqual(qs, [self.s2])
 
     def testAnnotate(self):
-        # FIXME: Требуются условия, при которых возможно получение дублей
-        self.skipTest("TBD: QuerySet.annotate")
+        qs = self.fk_client_model.objects.annotate(cs=Count('servermodel'))
+        ss = self.fk_model.objects.annotate(cs=Count('servermodel'))
+        self.assertQuerySetEqual(qs, ss)
 
     def testOrderBy(self):
         qs = self.client_model.objects.order_by('-pk')

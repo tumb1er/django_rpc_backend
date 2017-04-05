@@ -160,6 +160,13 @@ class RpcBaseQuerySet(object):
                               native=self._return_native)
         return result
 
+    def annotate(self, *args, **kwargs):
+        kw = {expr: expr.default_alias for expr in args}
+        kw.update(kwargs)
+        qs = self._trace('annotate', args, kwargs)
+        qs._extra_fields += tuple(kw.keys())
+        return qs
+
     def select_related(self, *args, **kwargs):
         qs = self._trace('select_related', args, kwargs)
         if args and args[0] is None:
@@ -318,9 +325,7 @@ class RpcQuerySet(RpcBaseQuerySet):
     def exclude(self, *args, **kwargs):
         pass
 
-    @utils.queryset_method
-    def annotate(self, *args, **kwargs):
-        pass
+    annotate = RpcBaseQuerySet.annotate
 
     @utils.queryset_method
     def order_by(self, *args, **kwargs):

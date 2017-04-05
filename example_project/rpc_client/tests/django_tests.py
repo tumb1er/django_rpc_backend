@@ -15,6 +15,8 @@ class DjangoQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                              TestCase):
     client_model = ClientModel
     server_model = ServerModel
+    fk_client_model = FKClientModel
+    fk_model =  FKModel
     fixtures = ['tests.json']
 
 
