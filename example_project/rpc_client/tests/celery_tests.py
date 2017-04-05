@@ -1,10 +1,10 @@
 # coding: utf-8
+from multiprocessing import Process
 from unittest import skipIf
 
 from celery.bin.celery import CeleryCommand
 from django.conf import settings
 from django.test import TestCase
-from multiprocessing import Process
 
 from django_rpc.celery.app import celery
 from django_rpc.celery.client import RpcClient

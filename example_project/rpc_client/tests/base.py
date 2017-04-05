@@ -55,6 +55,7 @@ class QuerySetTestsMixin(TestCase):
     client_model = None  # type: Type[RpcModel]
     server_model = None
     fk_model = None
+    fk_client_model = None  # type: Type[RpcModel]
     """ 
     :type server_model: rpc_server.models.ServerModel
     :type fk_model: rpc_server.models.FKModel
@@ -155,6 +156,15 @@ class QuerySetTestsMixin(TestCase):
         s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
         self.assertTrue(hasattr(c, 'fk'))
         self.assertObjectsEqual(c.fk, s.fk)
+
+    def testClearSelectRelated(self):
+        qs = self.client_model.objects.filter(pk=1)
+        c = list(qs)[0]
+        self.assertFalse(hasattr(c, '_fk_cache'))
+        qs = self.client_model.objects.filter(pk=1).select_related('fk')
+        qs = qs.select_related(None)
+        c = list(qs)[0]
+        self.assertFalse(hasattr(c, '_fk_cache'))
 
     def testPrefetchRelated(self):
         # FIXME: сериализация связанных объектов

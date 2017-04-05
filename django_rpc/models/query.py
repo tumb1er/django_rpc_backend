@@ -77,6 +77,7 @@ class RpcBaseQuerySet(object):
         '_return_native',
         '_field_list',
         '_extra_fields',
+        '_related_fields',
         '_exclude_fields',
         '_iterable_class'
     ]
@@ -88,8 +89,9 @@ class RpcBaseQuerySet(object):
         self._result_cache = None
         self.__trace = ()
         self.__field_list = ()
-        self._extra_fields = ()
-        self._exclude_fields = ()
+        self._extra_fields = ()  # qs.extra()
+        self._exclude_fields = ()  # qs.defer(), qs.only()
+        self._related_fields = ()  # qs.select_related()
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -150,16 +152,20 @@ class RpcBaseQuerySet(object):
     def fetch(self):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
+        extra_fields = self._extra_fields + self._related_fields
         result = client.fetch(opts.app_label, opts.name, self.__trace,
                               fields=self._field_list or None,
-                              extra_fields=self._extra_fields,
+                              extra_fields=extra_fields,
                               exclude_fields=self._exclude_fields,
                               native=self._return_native)
         return result
 
     def select_related(self, *args, **kwargs):
         qs = self._trace('select_related', args, kwargs)
-        qs._extra_fields += tuple(args)
+        if args and args[0] is None:
+            qs._related_fields = ()
+        else:
+            qs._related_fields += tuple(args)
         return qs
 
     def extra(self, *args, **kwargs):
