@@ -78,6 +78,7 @@ class RpcBaseQuerySet(object):
         '_field_list',
         '_extra_fields',
         '_related_fields',
+        '_prefetch_fields',
         '_exclude_fields',
         '_iterable_class'
     ]
@@ -137,6 +138,23 @@ class RpcBaseQuerySet(object):
     def __iter__(self):
         self._fetch_all()
         return iter(self._result_cache)
+
+    def __getitem__(self, item):
+        """
+        :type item: int | slice
+        """
+        if self._result_cache is not None:
+            return self._result_cache[item]
+        if not isinstance(item, slice):
+            single_object = True
+            item = slice(item, item + 1)
+        else:
+            single_object = False
+
+        qs = self._trace('getitem', (item.start, item.stop), {})
+        qs._fetch_all()
+
+        return qs[0] if single_object else qs
 
     def instantiate(self, data):
         obj = self.model()

@@ -7,10 +7,8 @@ from django.db import models
 from django.db.models import Count
 from django.utils.timezone import now
 from mock import mock
-from typing import Type
 
 from django_rpc.celery import codecs
-from django_rpc.models.base import RpcModel
 
 
 def encode_decode(data):
@@ -53,14 +51,15 @@ class BaseRpcTestCase(TestCase):
 
 
 class QuerySetTestsMixin(TestCase):
-    client_model = None  # type: Type[RpcModel]
+    client_model = None
     server_model = None
     fk_model = None
-    fk_client_model = None  # type: Type[RpcModel]
+    fk_client_model = None
     """ 
+    :type client_model: django_rpc.models.RpcModel
     :type server_model: rpc_server.models.ServerModel
     :type fk_model: rpc_server.models.FKModel
-    
+    :type fk_client_model: django_rpc.models.RpcModel
     """
 
     # noinspection PyProtectedMember
@@ -70,6 +69,12 @@ class QuerySetTestsMixin(TestCase):
         if hasattr(o2, '_state'):
             del o2._state
         self.assertDictEqual(o1.__dict__, o2.__dict__)
+
+    def assertQuerySetEqual(self, qs, expected):
+        result = list(qs)
+        self.assertEqual(len(result), len(expected))
+        for real, exp in zip(result, expected):
+            self.assertObjectsEqual(real, exp)
 
     def setUp(self):
         super(QuerySetTestsMixin, self).setUp()
@@ -159,31 +164,30 @@ class QuerySetTestsMixin(TestCase):
 
     def testSelectRelated(self):
         qs = self.client_model.objects.filter(pk=1).select_related('fk')
-        c = list(qs)[0]
+        c = qs[0]
         s = self.server_model.objects.filter(pk=1).select_related('fk')[0]
         self.assertTrue(hasattr(c, '_fk_cache'))
         self.assertObjectsEqual(c.fk, s.fk)
 
     def testClearSelectRelated(self):
         qs = self.client_model.objects.filter(pk=1)
-        c = list(qs)[0]
+        c = qs[0]
         self.assertFalse(hasattr(c, '_fk_cache'))
         qs = self.client_model.objects.filter(pk=1).select_related('fk')
         qs = qs.select_related(None)
-        c = list(qs)[0]
+        c = qs[0]
         self.assertFalse(hasattr(c, '_fk_cache'))
 
     def testPrefetchRelated(self):
         ss = self.fk_model.objects.filter(pk=1)
         qs = self.fk_client_model.objects.filter(pk=1)
-        d = list(qs)[0]
         self.assertFalse(hasattr(ss[0], '_prefetched_objects_cache'))
-        self.assertFalse(hasattr(d, '_prefetched_objects_cache'))
+        self.assertFalse(hasattr(qs[0], '_prefetched_objects_cache'))
 
         ss = ss.prefetch_related('servermodel_set')
         qs = qs.prefetch_related('servermodel_set')
 
-        d = list(qs)[0]
+        d = qs[0]
         e = ss[0]
         self.assertTrue(hasattr(e, '_prefetched_objects_cache'))
         self.assertIs(e._prefetched_objects_cache['servermodel'].model,
@@ -198,11 +202,11 @@ class QuerySetTestsMixin(TestCase):
 
     def testClearPrefetchRelated(self):
         qs = self.fk_client_model.objects.filter(pk=1)
-        c = list(qs)[0]
+        c = qs[0]
         self.assertFalse(hasattr(c, '_prefetched_objects_cache'))
         qs = qs.prefetch_related('servermodel_set')
         qs = qs.prefetch_related(None)
-        c = list(qs)[0]
+        c = qs[0]
         self.assertFalse(hasattr(c, '_prefetched_objects_cache'))
 
     def testExtra(self):
@@ -424,8 +428,24 @@ class QuerySetTestsMixin(TestCase):
         c.delete()
         self.assertFalse(self.server_model.objects.filter(id=c.id).exists())
 
-    def assertQuerySetEqual(self, qs, expected):
-        result = list(qs)
-        self.assertEqual(len(result), len(expected))
-        for real, exp in zip(result, expected):
-            self.assertObjectsEqual(real, exp)
+    def testGetItem(self):
+        kw = self.s1.__dict__.copy()
+        del kw['id']
+        del kw['_state']
+        s = self.server_model(**kw)
+        self.server_model.objects.bulk_create([s] * 5)
+
+        d = self.client_model.objects.all()[2]
+        e = self.server_model.objects.all()[2]
+        self.assertObjectsEqual(d, e)
+
+    def testSlice(self):
+        kw = self.s1.__dict__.copy()
+        del kw['id']
+        del kw['_state']
+        s = self.server_model(**kw)
+        self.server_model.objects.bulk_create([s] * 5)
+
+        d = self.client_model.objects.all()[2: 5]
+        e = self.server_model.objects.all()[2: 5]
+        self.assertQuerySetEqual(d, e)

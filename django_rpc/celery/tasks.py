@@ -57,11 +57,23 @@ class BaseRpcTask(celery.Task):
         return [f.attname for f in model._meta.fields]
 
     @staticmethod
-    def trace_queryset(qs, trace):
+    def getitem(qs, *args):
+        if len(args) == 1:
+            item = args[0]
+            return qs[item]
+        s = slice(*args)
+        return qs[s]
+
+    def trace_queryset(self, qs, trace):
         for method, args, kwargs in trace:
-            qs = getattr(qs, method)(*args, **kwargs)
-            if not isinstance(qs, (QuerySet, Model)):
-                break
+            try:
+                qs = getattr(qs, method)(*args, **kwargs)
+                if not isinstance(qs, (QuerySet, Model)):
+                    break
+            except AttributeError:
+                if method == 'getitem':
+                    return self.getitem(qs, *args)
+                raise
         return qs
 
 

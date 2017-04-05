@@ -14,5 +14,10 @@ setup(
     license='Beerware',
     author='Tumbler',
     author_email='zimbler@gmail.com',
-    description='Django RPC database backend'
+    description='Django RPC database backend',
+    requires=[
+        'pytz',
+        'celery',
+        'django'],
+    test_requres=['mock']
 )
