@@ -14,6 +14,8 @@ class DjangoQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                              TestCase):
     client_model = ClientModel
     server_model = ServerModel
+    fk_model = FKModel
+    fk_client_model = FKClientModel
     fixtures = ['tests.json']
 
 
@@ -71,6 +73,8 @@ class NativeQuerySetTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
                              TestCase):
     client_model = NativeModel
     server_model = ServerModel
+    fk_model = FKModel
+    fk_client_model = FKClientModel
     fixtures = ['tests.json']
 
     def testSelectRelated(self):

@@ -92,6 +92,7 @@ class RpcBaseQuerySet(object):
         self._extra_fields = ()  # qs.extra()
         self._exclude_fields = ()  # qs.defer(), qs.only()
         self._related_fields = ()  # qs.select_related()
+        self._prefetch_fields = ()  # qs.prefetch_related()
         self._return_native = False
         super(RpcBaseQuerySet, self).__init__()
 
@@ -152,7 +153,8 @@ class RpcBaseQuerySet(object):
     def fetch(self):
         opts = self.model.Rpc
         client = RpcClient.from_db(opts.db)
-        extra_fields = self._extra_fields + self._related_fields
+        extra_fields = (self._extra_fields + self._related_fields +
+                        self._prefetch_fields)
         result = client.fetch(opts.app_label, opts.name, self.__trace,
                               fields=self._field_list or None,
                               extra_fields=extra_fields,
@@ -166,6 +168,14 @@ class RpcBaseQuerySet(object):
             qs._related_fields = ()
         else:
             qs._related_fields += tuple(args)
+        return qs
+
+    def prefetch_related(self, *args, **kwargs):
+        qs = self._trace('prefetch_related', args, kwargs)
+        if args and args[0] is None:
+            qs._prefetch_fields = ()
+        else:
+            qs._prefetch_fields += tuple(args)
         return qs
 
     def extra(self, *args, **kwargs):
@@ -352,9 +362,7 @@ class RpcQuerySet(RpcBaseQuerySet):
 
     select_related = RpcBaseQuerySet.select_related
 
-    @utils.queryset_method
-    def prefetch_related(self, *args, **kwargs):
-        pass
+    prefetch_related = RpcBaseQuerySet.prefetch_related
 
     extra = RpcBaseQuerySet.extra
 

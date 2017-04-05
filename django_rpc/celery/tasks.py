@@ -25,20 +25,23 @@ class BaseRpcTask(celery.Task):
         attrs = {'Meta': Meta}
         for k in extra_fields:
             try:
-                # noinspection PyProtectedMember
-                f = Meta.model._meta.get_field(k)
-            except FieldDoesNotExist:
+                descriptor = getattr(Meta.model, k)
+            except AttributeError:
                 attrs[k] = serializers.ReadOnlyField()
             else:
+                f = descriptor.field
                 if not f.is_relation:
                     attrs[k] = serializers.ReadOnlyField()
                 else:
+                    many = hasattr(descriptor, 'rel')
                     class NestedMeta:
-                        model = f.related_model
+                        model = f.model if many else f.related_model
                         fields = '__all__'
-                    nested = type("Serializer", (serializers.ModelSerializer,),
-                                  {'Meta': NestedMeta})
-                    attrs[k] = nested()
+                    NestedSerializer = type("Serializer",
+                                            (serializers.ModelSerializer,),
+                                            {'Meta': NestedMeta})
+                    nested = NestedSerializer(many=many)
+                    attrs[k] = nested
 
         serializer_class = type("Serializer",
                                 (serializers.ModelSerializer,),
