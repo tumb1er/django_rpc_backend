@@ -98,8 +98,11 @@ class QuerySetTestsMixin(TestCase):
         self.assertQuerySetEqual(qs, [self.s2, self.s1])
 
     def testDistinct(self):
-        # FIXME: Требуются условия, при которых возможно получение дублей
-        self.skipTest("TBD: QuerySet.distinct")
+        data = list(self.client_model.objects.values('int_field').distinct())
+        expected = list(self.server_model.objects.values('int_field').distinct())
+        self.assertEqual(len(data), len(expected))
+        for d, e in zip(data, expected):
+            self.assertDictEqual(d, e)
 
     def testValues(self):
         data = list(self.client_model.objects.values('char_field'))
