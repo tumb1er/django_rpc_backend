@@ -39,7 +39,6 @@ class BaseRpcTask(celery.Task):
                     attrs[k] = serializers.ReadOnlyField()
                 else:
                     many = hasattr(descriptor, 'rel')
-
                     model = f.model if many else f.related_model
                     fields = self.get_fields(model)
 

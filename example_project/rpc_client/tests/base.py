@@ -172,9 +172,6 @@ class QuerySetTestsMixin(TestCase):
         self.assertFalse(hasattr(c, '_fk_cache'))
 
     def testPrefetchRelated(self):
-
-        self.client_model.objects.get(pk=1)
-
         ss = self.fk_model.objects.filter(pk=1)
         qs = self.fk_client_model.objects.filter(pk=1)
         fk = list(qs)[0]
@@ -183,6 +180,7 @@ class QuerySetTestsMixin(TestCase):
 
         ss = ss.prefetch_related('servermodel_set')
         qs = qs.prefetch_related('servermodel_set')
+
         fk = list(qs)[0]
         self.assertTrue(hasattr(ss[0], '_prefetched_objects_cache'))
         self.assertIs(ss[0]._prefetched_objects_cache['servermodel'].model,
