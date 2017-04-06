@@ -44,6 +44,7 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
 
         self.client_model._meta.db_table = self.server_model._meta.db_table
         self.fk_client_model._meta.db_table = self.fk_model._meta.db_table
+        self.signal_model = self.client_model
 
     def testUsing(self):
         qs = self.client_model.objects.using('some_db')

@@ -1,6 +1,7 @@
 # coding: utf-8
 import six
 
+from django_rpc.celery.client import RpcClient
 from django_rpc.models.manager import RpcManager
 
 S_MUST_DEFINE_NON_EMPTY_ATTR = "%s.Rpc class must define non-empty %s attribute"
@@ -88,7 +89,12 @@ class RpcModel(six.with_metaclass(RpcModelBase)):
             obj = self.__class__.objects.create(**data)
             self.__dict__.update(obj.__dict__)
         else:
-            self.__class__.objects.filter(pk=pk).update(**data)
+            opts = self.__class__.Rpc
+            client = RpcClient.from_db(opts.db)
+            qs = self.__class__.objects.filter(pk=pk)
+            result = client.update(opts.app_label, opts.name, qs.rpc_trace,
+                                   data, single=True)
+            return result
 
     def delete(self):
         pk = getattr(self, self.Rpc.pk_field, None)

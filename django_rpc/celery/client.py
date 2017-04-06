@@ -78,8 +78,10 @@ class RpcClient(object):
         result = self._insert.delay(app_label, name, objs, return_id=return_id)
         return result.get()
 
-    def update(self, app_label, name, trace, updates):
-        return self._update.delay(app_label, name, trace, updates).get()
+    def update(self, app_label, name, trace, updates, single=False):
+        result = self._update.delay(app_label, name, trace, updates,
+                                    single=single)
+        return result.get()
 
     def delete(self, app_label, name, trace):
         return self._delete.delay(app_label, name, trace).get()

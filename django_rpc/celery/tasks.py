@@ -108,22 +108,38 @@ class InsertTask(BaseRpcTask):
 
         serializer_class = self.get_serializer_class(model)
 
-        s = serializer_class(data=rpc_data, many=True)
-        if s.is_valid(raise_exception=True):
+        many = len(rpc_data) > 1
+        data = rpc_data if many else rpc_data[0]
+        s = serializer_class(data=data, many=many)
+        s.is_valid(raise_exception=True)
+
+        if many:
+            objects = [model(**item) for item in s.validated_data]
+            model.objects.bulk_create(objects)
+            s = serializer_class(instance=objects, many=True)
+        else:
             result = s.save()
             if return_id:
-                return result[0].pk
-            return s.data
+                return result.pk
+        return s.data if many else [s.data]
 
 
 class UpdateTask(BaseRpcTask):
     name = 'django_rpc.update'
 
-    def run(self, module_name, class_name, trace, updates):
+    def run(self, module_name, class_name, trace, updates, single=False):
         model = apps.get_model(module_name, class_name)
-
+        # noinspection PyProtectedMember
+        pk_name = model._meta.pk.attname
+        updates.pop(pk_name, None)
         qs = model.objects.get_queryset()
         qs = self.trace_queryset(qs, trace)
+        if single:
+            instance = qs.get()
+            for k, v in updates.items():
+                setattr(instance, k, v)
+            instance.save(update_fields=list(updates.keys()))
+            return 1
         return qs.update(**updates)
 
 

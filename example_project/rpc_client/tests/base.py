@@ -3,8 +3,11 @@ from unittest import TestCase
 
 import pytz
 from celery import Task
+from collections import defaultdict
 from django.db import models
 from django.db.models import Count
+from django.db.models.signals import pre_save, post_save, pre_delete, \
+    post_delete
 from django.utils.timezone import now
 from mock import mock
 
@@ -85,6 +88,8 @@ class QuerySetTestsMixin(TestCase):
         super(QuerySetTestsMixin, self).setUp()
         self.s1 = self.server_model.objects.get(pk=1)
         self.s2 = self.server_model.objects.get(pk=2)
+        self.signals = defaultdict(list)
+        self.signal_model = self.server_model
 
     def testFilter(self):
         qs = self.client_model.objects.filter(pk=self.s1.pk)
@@ -410,28 +415,38 @@ class QuerySetTestsMixin(TestCase):
         qs = self.client_model.objects.get_queryset()
         self.assertIsInstance(m1.get_queryset(), type(qs))
 
-    # noinspection PyUnresolvedReferences
     def testModelSaveInsert(self):
         c = self.client_model(char_field='test', int_field=0)
+        self.connect_signals()
         c.save()
+        self.disconnect_signals()
         self.assertIsNotNone(c.id)
         s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
 
-    # noinspection PyUnresolvedReferences
     def testModelSaveUpdate(self):
         c = self.client_model.objects.get(id=self.s1.id)
         c.int_field = 100500
         c.dt_field = now().replace(microsecond=123000)
+        self.connect_signals()
         c.save()
+        self.disconnect_signals()
         s = self.server_model.objects.get(pk=c.id)
         self.assertEqual(s.int_field, 100500)
         self.assertObjectsEqual(c, s)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
 
     def testModelDelete(self):
         c = self.client_model.objects.get(id=self.s1.id)
+        self.connect_signals()
         c.delete()
+        self.disconnect_signals()
         self.assertFalse(self.server_model.objects.filter(id=c.id).exists())
+        self.assertTrue(self.signals['pre_delete'])
+        self.assertTrue(self.signals['post_delete'])
 
     def testGetItem(self):
         self.clone(self.s1, 5)
@@ -468,6 +483,30 @@ class QuerySetTestsMixin(TestCase):
         del kw['_state']
         s = type(obj)(**kw)
         self.server_model.objects.bulk_create([s] * count)
+
+    def record_pre_save(self, **kwargs):
+        self.signals['pre_save'].append(kwargs)
+
+    def record_post_save(self, **kwargs):
+        self.signals['post_save'].append(kwargs)
+
+    def record_pre_del(self, **kwargs):
+        self.signals['pre_delete'].append(kwargs)
+
+    def record_post_del(self, **kwargs):
+        self.signals['post_delete'].append(kwargs)
+
+    def connect_signals(self):
+        pre_save.connect(self.record_pre_save, sender=self.signal_model)
+        post_save.connect(self.record_post_save, sender=self.signal_model)
+        pre_delete.connect(self.record_pre_del, sender=self.signal_model)
+        post_delete.connect(self.record_post_del, sender=self.signal_model)
+
+    def disconnect_signals(self):
+        pre_save.disconnect(self.record_pre_save, sender=self.signal_model)
+        post_save.disconnect(self.record_post_save, sender=self.signal_model)
+        pre_delete.disconnect(self.record_pre_del, sender=self.signal_model)
+        post_delete.disconnect(self.record_post_del, sender=self.signal_model)
 
     @staticmethod
     def mock_celery_task():

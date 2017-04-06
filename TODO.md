@@ -55,6 +55,5 @@ Django
 FIXME
 -----
 
-* bulk_create на серверной стороне совсем не bulk. См. ListSerializer.create
 * model.delete и save на серверной стороне должны отправлять соответствующие 
 сигналы

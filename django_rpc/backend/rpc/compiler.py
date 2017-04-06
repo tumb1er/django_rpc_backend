@@ -109,7 +109,8 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
             rpc.app_label,
             rpc.name,
             trace,
-            values)
+            values,
+            single=True)
         return results
 
 
