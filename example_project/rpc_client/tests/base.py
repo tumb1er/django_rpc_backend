@@ -285,11 +285,30 @@ class QuerySetTestsMixin(TestCase):
         self.assertObjectsEqual(res, self.s1)
 
     def testCreate(self):
+        self.connect_signals()
         c = self.client_model.objects.create(char_field='test', int_field=1)
+        self.disconnect_signals()
         s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
 
     def testGetOrCreate(self):
+        self.s1.delete()
+        self.connect_signals()
+        c, created = self.client_model.objects.get_or_create(
+            char_field='first',
+            defaults={'int_field': 1})
+        self.disconnect_signals()
+        self.assertTrue(created)
+        self.assertIsInstance(c, self.client_model)
+        self.s1.id = c.id
+        self.s1.refresh_from_db()
+        self.assertObjectsEqual(c, self.s1)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
+
+    def testGetOrCreateExists(self):
         c, created = self.client_model.objects.get_or_create(
             char_field='first',
             defaults={'int_field': 1})
@@ -298,14 +317,34 @@ class QuerySetTestsMixin(TestCase):
         self.assertObjectsEqual(c, self.s1)
 
     def testUpdateOrCreate(self):
+        self.s1.delete()
+        self.connect_signals()
         c, created = self.client_model.objects.update_or_create(
             char_field='first',
             defaults={'int_field': 10})
+        self.disconnect_signals()
+        self.assertTrue(created)
+        self.assertIsInstance(c, self.client_model)
+        self.s1.id = c.id
+        self.s1.refresh_from_db()
+        self.assertEqual(self.s1.int_field, 10)
+        self.assertObjectsEqual(c, self.s1)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
+
+    def testUpdateOrCreateExists(self):
+        self.connect_signals()
+        c, created = self.client_model.objects.update_or_create(
+            char_field='first',
+            defaults={'int_field': 10})
+        self.disconnect_signals()
         self.assertFalse(created)
         self.assertIsInstance(c, self.client_model)
         s1 = self.server_model.objects.get(pk=self.s1.pk)
         self.assertEqual(s1.int_field, 10)
         self.assertObjectsEqual(c, s1)
+        self.assertTrue(self.signals['pre_save'])
+        self.assertTrue(self.signals['post_save'])
 
     def testBulkCreate(self):
         server_count = self.server_model.objects.count()
