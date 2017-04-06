@@ -1,13 +1,13 @@
 # coding: utf-8
 
-import celery
 from django.apps.registry import apps
 from django.db.models import QuerySet, Model
+import celery
+from django_rpc.celery.app import celery as celery_app
 from rest_framework import serializers
 
 
-# noinspection PyAbstractClass
-class BaseRpcTask(celery.Task):
+class BaseRpcTask(celery_app.Task):
     abstract = True
 
     def serialize(self, qs, **kwargs):
@@ -25,7 +25,8 @@ class BaseRpcTask(celery.Task):
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
-    def get_serializer_class(self, model, fields, extra_fields=()):
+    def get_serializer_class(self, model, fields=None, extra_fields=()):
+        fields = fields or self.get_fields(model)
         # noinspection PyPep8Naming
         Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
@@ -66,12 +67,12 @@ class BaseRpcTask(celery.Task):
         return qs
 
 
-# noinspection PyAbstractClass
 class FetchTask(BaseRpcTask):
+    name = 'django_rpc.fetch'
 
-    def __call__(self, module_name, class_name, trace, fields=None,
-                 extra_fields=None, exclude_fields=None, native=False,
-                 limits=(0, None)):
+    def run(self, module_name, class_name, trace, fields=None,
+            extra_fields=None, exclude_fields=None, native=False,
+            limits=(0, None)):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
 
@@ -98,18 +99,16 @@ class FetchTask(BaseRpcTask):
                               extra_fields=extra_fields)
 
 
-# noinspection PyAbstractClass
 class InsertTask(BaseRpcTask):
+    name = 'django_rpc.insert'
 
-    def __call__(self, module_name, class_name, rpc_data, rpc_fields,
-                 return_id=False, raw=False):
+    def run(self, module_name, class_name, rpc_data, return_id=False):
 
-        class Serializer(serializers.ModelSerializer):
-            class Meta:
-                model = apps.get_model(module_name, class_name)
-                fields = self.get_fields(model)
+        model = apps.get_model(module_name, class_name)
 
-        s = Serializer(data=rpc_data, many=True)
+        serializer_class = self.get_serializer_class(model)
+
+        s = serializer_class(data=rpc_data, many=True)
         if s.is_valid(raise_exception=True):
             result = s.save()
             if return_id:
@@ -117,10 +116,10 @@ class InsertTask(BaseRpcTask):
             return s.data
 
 
-# noinspection PyAbstractClass
 class UpdateTask(BaseRpcTask):
+    name = 'django_rpc.update'
 
-    def __call__(self, module_name, class_name, trace, updates):
+    def run(self, module_name, class_name, trace, updates):
         model = apps.get_model(module_name, class_name)
 
         qs = model.objects.get_queryset()
@@ -128,10 +127,10 @@ class UpdateTask(BaseRpcTask):
         return qs.update(**updates)
 
 
-# noinspection PyAbstractClass
 class DeleteTask(BaseRpcTask):
+    name = 'django_rpc.delete'
 
-    def __call__(self, module_name, class_name, trace):
+    def run(self, module_name, class_name, trace):
         model = apps.get_model(module_name, class_name)
 
         qs = model.objects.get_queryset()
@@ -139,11 +138,11 @@ class DeleteTask(BaseRpcTask):
         return qs.delete()
 
 
-# noinspection PyAbstractClass
 class GetOrCreateTask(BaseRpcTask):
+    name = 'django_rpc.get_or_create'
 
     # noinspection PyShadowingNames
-    def __call__(self, module_name, class_name, kwargs, update=False):
+    def run(self, module_name, class_name, kwargs, update=False):
         model = apps.get_model(module_name, class_name)
         qs = model.objects.get_queryset()
         if update:
@@ -154,33 +153,15 @@ class GetOrCreateTask(BaseRpcTask):
         data = self.serialize(obj, model=model)
         return data, created
 
-
-# noinspection PyUnusedLocal
-@celery.task(base=FetchTask, bind=True, shared=True, name='django_rpc.fetch')
-def fetch(*args, **kwargs):
-    pass
-
-
-# noinspection PyUnusedLocal
-@celery.task(base=InsertTask, bind=True, shared=True, name='django_rpc.insert')
-def insert(*args, **kwargs):
-    pass
-
-
-# noinspection PyUnusedLocal
-@celery.task(base=UpdateTask, bind=True, shared=True, name='django_rpc.update')
-def update(*args, **kwargs):
-    pass
-
-
-# noinspection PyUnusedLocal
-@celery.task(base=DeleteTask, bind=True, shared=True, name='django_rpc.delete')
-def delete(*args, **kwargs):
-    pass
-
-
-# noinspection PyUnusedLocal
-@celery.task(base=GetOrCreateTask, bind=True, shared=True,
-             name='django_rpc.get_or_create')
-def get_or_create(*args, **kwargs):
-    pass
+if celery.VERSION >= (4, 0, 0):
+    fetch = celery_app.register_task(FetchTask())
+    insert = celery_app.register_task(InsertTask())
+    update = celery_app.register_task(UpdateTask())
+    delete = celery_app.register_task(DeleteTask())
+    get_or_create = celery_app.register_task(GetOrCreateTask())
+else:
+    fetch = FetchTask()
+    insert = InsertTask()
+    update = UpdateTask()
+    delete = DeleteTask()
+    get_or_create = GetOrCreateTask()

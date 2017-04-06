@@ -8,7 +8,7 @@ from django.db.models import Count
 from django.utils.timezone import now
 from mock import mock
 
-from django_rpc.celery import codecs
+from django_rpc.celery import codecs, app
 
 
 def encode_decode(data):
@@ -42,12 +42,17 @@ class BaseRpcTestCase(TestCase):
                               side_effect=celery_passthrough, autospec=True)
         cls._apply_async_patcher = p
         p.start()
+        p = mock.patch('django_rpc.celery.client.RpcClient._app',
+                       new_callable=mock.PropertyMock(return_value=app.celery))
+        cls._celery_app_patcher = p
+        p.start()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        if hasattr(cls._apply_async_patcher, 'is_local'):
-            cls._apply_async_patcher.stop()
+        for p in (cls._apply_async_patcher, cls._celery_app_patcher):
+            if hasattr(p, 'is_local'):
+                p.stop()
 
 
 class QuerySetTestsMixin(TestCase):

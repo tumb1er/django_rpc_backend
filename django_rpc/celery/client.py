@@ -8,16 +8,22 @@ TASKS = (
     'django_rpc.fetch',
     'django_rpc.insert',
     'django_rpc.update',
+    'django_rpc.delete',
     'django_rpc.get_or_create'
 )
 
 
 def task(app, name):
-    # noinspection PyUnusedLocal
-    def nope(*args, **kwargs):
-        pass
 
-    return app.task(name=name)(nope)
+    def stub(*args, **kwargs):
+        args_signature = ', '.join(map(repr, args))
+        kwargs_signature = ', '.join(
+            ['%s=%s' % (k, repr(v)) for k, v in kwargs.items()])
+
+        raise RuntimeError("Should not get here while calling %s(%s, %s)" %
+                           (name, args_signature, kwargs_signature))
+
+    return app.task(name=name)(stub)
 
 
 class RpcClient(object):
@@ -29,7 +35,11 @@ class RpcClient(object):
         app.autodiscover_tasks(['django_rpc.celery'])
         for name in set(TASKS) - set(app.tasks.keys()):
             task(app, name)
-        self._app = app
+        self.__app = app
+
+    @property
+    def _app(self):
+        return self.__app
 
     @property
     def _insert(self):
@@ -64,9 +74,9 @@ class RpcClient(object):
             limits=limits)
         return result.get()
 
-    def insert(self, app_label, name, objs, fields, return_id=False, raw=False):
-        return self._insert.delay(app_label, name, objs, fields,
-                                  return_id=return_id, raw=raw).get()
+    def insert(self, app_label, name, objs, return_id=False):
+        result = self._insert.delay(app_label, name, objs, return_id=return_id)
+        return result.get()
 
     def update(self, app_label, name, trace, updates):
         return self._update.delay(app_label, name, trace, updates).get()

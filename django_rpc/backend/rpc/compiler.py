@@ -23,17 +23,19 @@ class RpcSQLCompiler(SQLCompiler):
         super(RpcSQLCompiler, self).__init__(query, connection, using)
         self.client = RpcClient.from_db(using)
 
-    def execute_sql(self, result_type=MULTI):
+    def execute_sql(self, result_type=MULTI, chunked_fetch=False):
         self.setup_query()
         # noinspection PyProtectedMember
         rpc = self.query.model.Rpc
+        # noinspection PyProtectedMember
+        opts = self.query.model._meta
         kwargs = {}
         lazy, defer = self.query.deferred_loading
         if lazy and not defer:  # only
             kwargs['fields'] = list(lazy | {rpc.pk.attname})
         elif lazy:  # defer
-            all = {f.attname for f in self.query.model._meta.get_fields()}
-            kwargs['fields'] = list(set(all) - lazy)
+            all_fields = {f.attname for f in opts.get_fields()}
+            kwargs['fields'] = list(set(all_fields) - lazy)
         results = self.client.fetch(
             rpc.app_label,
             rpc.name,
@@ -66,6 +68,7 @@ SQLCompiler = RpcSQLCompiler
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, RpcSQLCompiler):
 
+    # noinspection PyMethodOverriding
     def execute_sql(self, return_id=False):
         rpc = self.query.model.Rpc
         rpc_fields = [f.name for f in self.query.fields]
@@ -82,14 +85,13 @@ class SQLInsertCompiler(compiler.SQLInsertCompiler, RpcSQLCompiler):
             rpc.app_label,
             rpc.name,
             rpc_data,
-            rpc_fields,
-            return_id=return_id,
-            raw=self.query.raw)
+            return_id=return_id)
         return results
 
 
 class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
 
+    # noinspection PyMethodOverriding
     def execute_sql(self, return_id=False):
         rpc = self.query.model.Rpc
         where = self.query.where
@@ -113,6 +115,7 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, RpcSQLCompiler):
 
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, RpcSQLCompiler):
 
+    # noinspection PyMethodOverriding
     def execute_sql(self, result_type=CURSOR):
         rpc = self.query.model.Rpc
         where = self.query.where
@@ -131,5 +134,3 @@ class SQLDeleteCompiler(compiler.SQLDeleteCompiler, RpcSQLCompiler):
         if result_type == CURSOR:
             return RpcCursorStub(rowcount=results[0])
         return results
-
-

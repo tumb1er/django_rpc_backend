@@ -13,6 +13,6 @@ from .conf import config
 import celery
 
 
-celery = celery.Celery()
+celery = celery.Celery(name="django_rpc.server")
 celery.config_from_object(config)
 celery.autodiscover_tasks(['django_rpc.celery'])

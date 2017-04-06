@@ -282,14 +282,13 @@ class RpcBaseQuerySet(object):
             inserting = objects[offset: offset + batch_size]
             data = [dict_filter(obj.__dict__, fields)
                     for obj in inserting]
-            results = client.insert(opts.app_label, opts.name, data, fields)
+            results = client.insert(opts.app_label, opts.name, data)
             for obj, res in zip(inserting, results):
                 self.update_model(obj, res)
             inserted.extend(inserting)
             offset += batch_size
         return inserted
 
-    # noinspection PyMethodMayBeStatic
     def update_model(self, obj, data):
         model = type(obj)
         for k, v in data.items():
