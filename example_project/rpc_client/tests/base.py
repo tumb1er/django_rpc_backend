@@ -350,7 +350,9 @@ class QuerySetTestsMixin(TestCase):
         server_count = self.server_model.objects.count()
         c2 = self.client_model(char_field='2', int_field=1)
         c3 = self.client_model(char_field='3', int_field=1)
+        self.connect_signals()
         ret = self.client_model.objects.bulk_create([c2, c3])
+        self.disconnect_signals()
         self.assertEqual(len(ret), 2)
         self.assertIsInstance(ret[0], self.client_model)
         self.assertObjectsEqual(ret[0], c2)
@@ -362,6 +364,8 @@ class QuerySetTestsMixin(TestCase):
         c3.id = None
         self.assertObjectsEqual(c2, s2)
         self.assertObjectsEqual(c3, s3)
+        self.assertFalse(self.signals['pre_save'])
+        self.assertFalse(self.signals['post_save'])
 
     def testBulkCreateBatchSize(self):
         server_count = self.server_model.objects.count()
@@ -432,11 +436,15 @@ class QuerySetTestsMixin(TestCase):
         self.assertIs(exists, True)
 
     def testUpdate(self):
+        self.connect_signals()
         result = self.client_model.objects.filter(
             pk=self.s1.pk).update(int_field=100500)
+        self.disconnect_signals()
         self.assertIs(result, 1)
         self.s1.refresh_from_db()
         self.assertEqual(self.s1.int_field, 100500)
+        self.assertFalse(self.signals['pre_save'])
+        self.assertFalse(self.signals['post_save'])
 
     def testDelete(self):
         result = self.client_model.objects.filter(
