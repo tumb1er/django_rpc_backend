@@ -70,13 +70,14 @@ class QuerySetTestsMixin(TestCase):
     :type fk_client_model: django_rpc.models.RpcModel
     """
 
-    # noinspection PyProtectedMember
     def assertObjectsEqual(self, o1, o2):
-        if hasattr(o1, '_state'):
-            del o1._state
-        if hasattr(o2, '_state'):
-            del o2._state
-        self.assertDictEqual(o1.__dict__, o2.__dict__)
+        d1 = o1.__dict__.copy()
+        for f in '_state', '_fk_cache':
+            d1.pop(f, None)
+        d2 = o2.__dict__.copy()
+        for f in '_state', '_fk_cache':
+            d2.pop(f, None)
+        self.assertDictEqual(d1, d2)
 
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)
@@ -523,6 +524,26 @@ class QuerySetTestsMixin(TestCase):
         d = len(self.client_model.objects.all())
         e = len(self.server_model.objects.all())
         self.assertEqual(d, e)
+
+    def testOneToManyFK(self):
+        d_fk = self.fk_client_model.objects.first()
+        e_fk = self.fk_model.objects.first()
+        self.assertObjectsEqual(d_fk, e_fk)
+        self.assertQuerySetEqual(d_fk.servermodel_set.all(),
+                                 e_fk.servermodel_set.all())
+
+    def testFKInstance(self):
+        c = self.client_model.objects.get(pk=self.s1.pk)
+        d_fk = c.fk
+        e_fk = self.s1.fk
+        self.assertObjectsEqual(d_fk, e_fk)
+
+    def testFilterByFK(self):
+        c = self.client_model.objects.get(pk=self.s1.pk)
+        d_fk = c.fk
+        e_fk = self.s1.fk
+        self.assertQuerySetEqual(self.client_model.objects.filter(fk=d_fk),
+                                 self.server_model.objects.filter(fk=e_fk))
 
     def clone(self, obj, count):
         kw = obj.__dict__.copy()

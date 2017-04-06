@@ -19,6 +19,7 @@ setup(
         'pytz',
         'celery',
         'django',
-        'six'],
+        'six',
+        'jsonpickle'],
     test_requres=['mock']
 )

@@ -27,7 +27,7 @@ Django
 - [x] SlicedQuerySet
 - [x] qs.getitem, qs.len
 - [x] ForeignKey
-- [ ] OneToMany (Reverse FK)
+- [x] OneToMany (Reverse FK)
 - [ ] ManyToMany
 
 Тесты
@@ -54,6 +54,3 @@ Django
 
 FIXME
 -----
-
-* model.delete и save на серверной стороне должны отправлять соответствующие 
-сигналы

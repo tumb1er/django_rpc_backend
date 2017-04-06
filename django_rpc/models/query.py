@@ -8,6 +8,7 @@ import pytz
 from django_rpc.celery.client import RpcClient
 from django_rpc.models import utils
 
+
 Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
 
@@ -101,6 +102,12 @@ class RpcBaseQuerySet(object):
 
     def _trace(self, method, args, kwargs, iterable=None):
         clone = self._clone()
+        for k, v in list(kwargs.items()):
+            if not hasattr(v, 'Rpc'):
+                continue
+            pk_field = v.Rpc.pk_field
+            del kwargs[k]
+            kwargs['%s_id' % k] = getattr(v, pk_field)
         new_trace = Trace(method, args, kwargs)
         # noinspection PyTypeChecker
         clone.__trace = self.__trace + (new_trace,)

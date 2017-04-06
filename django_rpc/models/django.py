@@ -31,7 +31,10 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
         meta = attrs.get('Meta')
         if meta and getattr(meta, 'abstract'):
             return
-
+        if not meta:
+            meta = type('Meta', (), {})
+            attrs['Meta'] = meta
+        meta.base_manager_name = 'objects'
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
 
 
@@ -88,6 +91,18 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         instance = self.instantiate(data)
         return instance, created
 
+    def _update(self, values):
+        rpc = self.model.Rpc
+        client = RpcClient.from_db(rpc.db)
+        values = {f.attname: v for f, _, v in values}
+        single_pk = False
+        for t in self.rpc_trace:
+            if t.method == 'filter' and tuple(t.kwargs.keys()) == ('pk',):
+                single_pk = True
+                break
+        return client.update(rpc.app_label, rpc.name, self.rpc_trace, values,
+                             single=single_pk)
+
     def get_or_create(self, *args, **kwargs):
         return self._get_or_update_or_create(args, kwargs, update=False)
 
@@ -101,6 +116,8 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         raise NotImplementedError()
 
     def using(self, *args, **kwargs):
+        if self.db == args[0]:
+            return self
         raise NotImplementedError()
 
 

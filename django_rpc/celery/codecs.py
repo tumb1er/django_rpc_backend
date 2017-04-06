@@ -3,12 +3,10 @@ import decimal
 import json
 import re
 import uuid
-from json import scanner
-from json.decoder import JSONArray
 
+import jsonpickle
 import pytz
 import six
-import jsonpickle
 from kombu.utils.encoding import bytes_t
 
 try:
@@ -20,6 +18,7 @@ try:
     has_django = True
 except ImportError:
     has_django = False
+    smart_str = Promise = Q = Aggregate = None
 
 
 class RpcJsonEncoder(json.JSONEncoder):
@@ -32,6 +31,7 @@ class RpcJsonEncoder(json.JSONEncoder):
 
     """
 
+    # noinspection PyArgumentList
     def _default(self, o):
         # For Date Time string spec, see ECMA 262
         # http://ecma-international.org/ecma-262/5.1/#sec-15.9.1.15
@@ -67,14 +67,13 @@ class RpcJsonEncoder(json.JSONEncoder):
             if isinstance(o, Promise):
                 return smart_str(o)
             elif isinstance(o, Q):
-                return jsonpickle.encode(o)
+                return {'_': jsonpickle.encode(o)}
             elif isinstance(o, Aggregate):
-                return jsonpickle.encode(o)
+                return {'_': jsonpickle.encode(o)}
             else:
                 return self._default(o)
     else:
         default = _default
-
 
 
 class RpcJsonDecoder(json.JSONDecoder):
@@ -97,7 +96,8 @@ class RpcJsonDecoder(json.JSONDecoder):
     def _object_hook(self, val):
         """ Iterate through dict for additional conversion.
         """
-
+        if tuple(val.keys()) == ('_',):
+            return self._parse_type(val['_'])
         for k, v in six.iteritems(val):
             new = self._parse_type(v)
             if new is NotImplemented:
