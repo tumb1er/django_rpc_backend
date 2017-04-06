@@ -85,6 +85,10 @@ class QuerySetTestsMixin(TestCase):
         for real, exp in zip(result, expected):
             self.assertObjectsEqual(real, exp)
 
+    def assertHasSignals(self, *signals):
+        for s in signals:
+            self.assertTrue(self.signals[s])
+
     def setUp(self):
         super(QuerySetTestsMixin, self).setUp()
         self.s1 = self.server_model.objects.get(pk=1)
@@ -291,8 +295,7 @@ class QuerySetTestsMixin(TestCase):
         self.disconnect_signals()
         s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testGetOrCreate(self):
         self.s1.delete()
@@ -306,8 +309,7 @@ class QuerySetTestsMixin(TestCase):
         self.s1.id = c.id
         self.s1.refresh_from_db()
         self.assertObjectsEqual(c, self.s1)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testGetOrCreateExists(self):
         c, created = self.client_model.objects.get_or_create(
@@ -330,8 +332,7 @@ class QuerySetTestsMixin(TestCase):
         self.s1.refresh_from_db()
         self.assertEqual(self.s1.int_field, 10)
         self.assertObjectsEqual(c, self.s1)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testUpdateOrCreateExists(self):
         self.connect_signals()
@@ -344,8 +345,7 @@ class QuerySetTestsMixin(TestCase):
         s1 = self.server_model.objects.get(pk=self.s1.pk)
         self.assertEqual(s1.int_field, 10)
         self.assertObjectsEqual(c, s1)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testBulkCreate(self):
         server_count = self.server_model.objects.count()
@@ -471,8 +471,7 @@ class QuerySetTestsMixin(TestCase):
         self.assertIsNotNone(c.id)
         s = self.server_model.objects.get(pk=c.id)
         self.assertObjectsEqual(c, s)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testModelSaveUpdate(self):
         c = self.client_model.objects.get(id=self.s1.id)
@@ -484,8 +483,7 @@ class QuerySetTestsMixin(TestCase):
         s = self.server_model.objects.get(pk=c.id)
         self.assertEqual(s.int_field, 100500)
         self.assertObjectsEqual(c, s)
-        self.assertTrue(self.signals['pre_save'])
-        self.assertTrue(self.signals['post_save'])
+        self.assertHasSignals('pre_save', 'post_save')
 
     def testModelDelete(self):
         c = self.client_model.objects.get(id=self.s1.id)
@@ -493,8 +491,7 @@ class QuerySetTestsMixin(TestCase):
         c.delete()
         self.disconnect_signals()
         self.assertFalse(self.server_model.objects.filter(id=c.id).exists())
-        self.assertTrue(self.signals['pre_delete'])
-        self.assertTrue(self.signals['post_delete'])
+        self.assertHasSignals('pre_delete', 'post_delete')
 
     def testGetItem(self):
         self.clone(self.s1, 5)
