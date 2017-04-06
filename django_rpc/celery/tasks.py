@@ -2,7 +2,7 @@
 
 import celery
 from django.apps.registry import apps
-from django.db.models import QuerySet, Model, FieldDoesNotExist
+from django.db.models import QuerySet, Model
 from rest_framework import serializers
 
 
@@ -12,7 +12,7 @@ class BaseRpcTask(celery.Task):
 
     def serialize(self, qs, **kwargs):
 
-        extra_fields = kwargs.get('extra_fields', ())
+        extra = kwargs.get('extra_fields', ())
 
         model = kwargs.get('model') or qs.model
         fields = kwargs.get('fields', '__all__')
@@ -21,11 +21,12 @@ class BaseRpcTask(celery.Task):
             # fix related objects attribute names
             fields = self.get_fields(model)
 
-        serializer_class = self.get_serializer_class(model, fields, extra_fields)
+        serializer_class = self.get_serializer_class(model, fields, extra)
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
     def get_serializer_class(self, model, fields, extra_fields=()):
+        # noinspection PyPep8Naming
         Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
         for k in extra_fields:
@@ -56,7 +57,8 @@ class BaseRpcTask(celery.Task):
         # noinspection PyProtectedMember
         return [f.attname for f in model._meta.fields]
 
-    def trace_queryset(self, qs, trace):
+    @staticmethod
+    def trace_queryset(qs, trace):
         for method, args, kwargs in trace:
             qs = getattr(qs, method)(*args, **kwargs)
             if not isinstance(qs, (QuerySet, Model)):
