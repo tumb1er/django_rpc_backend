@@ -18,6 +18,7 @@ setup(
     requires=[
         'pytz',
         'celery',
-        'django'],
+        'django',
+        'six'],
     test_requres=['mock']
 )

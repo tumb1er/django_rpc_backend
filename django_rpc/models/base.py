@@ -26,7 +26,8 @@ class RpcModelBase(type):
             pass
 
         for k, v in attrs.items():
-            if hasattr(v, 'contribute_to_class'):
+            if (hasattr(v, 'contribute_to_class') and not
+                    getattr(v, 'model', None)):
                 v.contribute_to_class(new, k)
         return new
 

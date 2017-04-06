@@ -3,14 +3,16 @@
 
 class ForeignKey(object):
     def __init__(self, model):
-        self.model = model
+        self.remote_model = model
+        self.model = None
 
-    def contribute_to_class(self, klass, name):
-        setattr(klass, name, ForwardFKDescriptor(self.model, name))
-        model_name = klass.Rpc.name.lower()
+    def contribute_to_class(self, model, name):
+        self.model = model
+        setattr(model, name, ForwardFKDescriptor(self.remote_model, name))
+        model_name = model.Rpc.name.lower()
         descriptor_name = '%s_set' % model_name
-        setattr(self.model, descriptor_name,
-                ReverseFKDescriptor(klass, model_name, self.model))
+        setattr(self.remote_model, descriptor_name,
+                ReverseFKDescriptor(model, model_name, self.remote_model))
 
 
 class ReverseFKDescriptor(object):
