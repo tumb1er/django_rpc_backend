@@ -26,16 +26,17 @@ class BaseRpcTask(celery_app.Task):
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
-    # noinspection PyProtectedMember
     def get_serializer_class(self, model, fields=None, extra_fields=()):
         fields = fields or self.get_fields(model)
         # noinspection PyPep8Naming
         Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
+        # noinspection PyProtectedMember
         opts = model._meta
-        for k in list(fields) + list(extra_fields):
+        for k in set(fields) | set(extra_fields):
             try:
                 descriptor = getattr(model, k)
+                f = descriptor.field
             except AttributeError:
                 try:
                     f = opts.get_field(k)
@@ -44,7 +45,6 @@ class BaseRpcTask(celery_app.Task):
                 except FieldDoesNotExist:
                     attrs[k] = serializers.ReadOnlyField()
             else:
-                f = descriptor.field
                 if not f.is_relation:
                     attrs[k] = serializers.ReadOnlyField()
                 else:
@@ -54,7 +54,9 @@ class BaseRpcTask(celery_app.Task):
 
                     # noinspection PyPep8Naming
                     NestedSerializer = self.get_serializer_class(model, fields)
-                    nested = NestedSerializer(many=many, required=not f.blank, allow_null=f.null)
+                    nested = NestedSerializer(many=many,
+                                              required=not f.blank,
+                                              allow_null=f.null)
                     attrs[k] = nested
         serializer_class = type("Serializer",
                                 (serializers.ModelSerializer,),
