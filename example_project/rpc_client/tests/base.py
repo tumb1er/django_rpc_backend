@@ -1,17 +1,17 @@
 # coding: utf-8
+from collections import defaultdict
+from datetime import datetime
 from unittest import TestCase
 
 import pytz
 from celery import Task
-from collections import defaultdict
 from django.db import models
-from django.db.models import Count
-from django.db.models.signals import pre_save, post_save, pre_delete, \
-    post_delete
+from django.db.models import Count, signals
 from django.utils.timezone import now
 from mock import mock
 
 from django_rpc.celery import codecs, app
+from django_rpc.models.django import DJ110
 
 
 def encode_decode(data):
@@ -34,10 +34,11 @@ def celery_passthrough(task, *args, **kwargs):
 class BaseRpcTestCase(TestCase):
 
     _apply_async_patcher = None
+    _celery_app_patcher = None
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(BaseRpcTestCase, cls).setUpClass()
 
         __import__('django_rpc.celery.tasks')
         # noinspection PyUnresolvedReferences
@@ -52,7 +53,7 @@ class BaseRpcTestCase(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
+        super(BaseRpcTestCase, cls).tearDownClass()
         for p in (cls._apply_async_patcher, cls._celery_app_patcher):
             if hasattr(p, 'is_local'):
                 p.stop()
@@ -71,13 +72,16 @@ class QuerySetTestsMixin(TestCase):
     """
 
     def assertObjectsEqual(self, o1, o2):
-        d1 = o1.__dict__.copy()
-        for f in '_state', '_fk_cache':
-            d1.pop(f, None)
-        d2 = o2.__dict__.copy()
-        for f in '_state', '_fk_cache':
-            d2.pop(f, None)
-        self.assertDictEqual(d1, d2)
+        def clear_dict(o):
+            d = {}
+            for k, v in o.__dict__.items():
+                if k.startswith('_'):
+                    continue
+                if isinstance(v, datetime):
+                    v = v.replace(microsecond=0)
+                d[k] = v
+            return d
+        self.assertDictEqual(clear_dict(o1), clear_dict(o2))
 
     def assertQuerySetEqual(self, qs, expected):
         result = list(qs)
@@ -149,8 +153,8 @@ class QuerySetTestsMixin(TestCase):
         self.assertListEqual(data, expected)
 
     def testDates(self):
-        data = list(self.client_model.objects.dates('dt_field', 'year'))
-        expected = list(self.server_model.objects.dates('dt_field', 'year'))
+        data = list(self.client_model.objects.dates('d_field', 'year'))
+        expected = list(self.server_model.objects.dates('d_field', 'year'))
         self.assertListEqual(data, expected)
 
     def testDateTimes(self):
@@ -391,8 +395,9 @@ class QuerySetTestsMixin(TestCase):
         self.assertEqual(real, expected)
 
     def testInBulk(self):
-        cc = self.client_model.objects.in_bulk()
-        ss = self.server_model.objects.in_bulk()
+        id_list = self.server_model.objects.values_list('id', flat=True)
+        cc = self.client_model.objects.in_bulk(id_list=id_list)
+        ss = self.server_model.objects.in_bulk(id_list=id_list)
         self.assertIsInstance(cc, dict)
         self.assertEqual(len(cc), len(ss))
         self.assertSetEqual(set(cc.keys()), set(ss.keys()))
@@ -450,10 +455,10 @@ class QuerySetTestsMixin(TestCase):
     def testDelete(self):
         result = self.client_model.objects.filter(
             pk=self.s1.pk).delete()
-
-        # Django-1.10 result is (total, {per_class})
-        self.assertIsInstance(result, (tuple, list))
-        self.assertEqual(result[0], 1)
+        if DJ110:
+            # Django-1.10 result is (total, {per_class})
+            self.assertIsInstance(result, (tuple, list))
+            self.assertEqual(result[0], 1)
 
         self.assertFalse(self.server_model.objects.filter(
             pk=self.s1.pk).exists())
@@ -562,16 +567,24 @@ class QuerySetTestsMixin(TestCase):
         self.signals['post_delete'].append(kwargs)
 
     def connect_signals(self):
-        pre_save.connect(self.record_pre_save, sender=self.signal_model)
-        post_save.connect(self.record_post_save, sender=self.signal_model)
-        pre_delete.connect(self.record_pre_del, sender=self.signal_model)
-        post_delete.connect(self.record_post_del, sender=self.signal_model)
+        signals.pre_save.connect(self.record_pre_save,
+                                 sender=self.signal_model)
+        signals.post_save.connect(self.record_post_save,
+                                  sender=self.signal_model)
+        signals.pre_delete.connect(self.record_pre_del,
+                                   sender=self.signal_model)
+        signals.post_delete.connect(self.record_post_del,
+                                    sender=self.signal_model)
 
     def disconnect_signals(self):
-        pre_save.disconnect(self.record_pre_save, sender=self.signal_model)
-        post_save.disconnect(self.record_post_save, sender=self.signal_model)
-        pre_delete.disconnect(self.record_pre_del, sender=self.signal_model)
-        post_delete.disconnect(self.record_post_del, sender=self.signal_model)
+        signals.pre_save.disconnect(self.record_pre_save,
+                                    sender=self.signal_model)
+        signals.post_save.disconnect(self.record_post_save,
+                                     sender=self.signal_model)
+        signals.pre_delete.disconnect(self.record_pre_del,
+                                      sender=self.signal_model)
+        signals.post_delete.disconnect(self.record_post_del,
+                                       sender=self.signal_model)
 
     @staticmethod
     def mock_celery_task():
