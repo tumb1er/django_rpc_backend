@@ -30,7 +30,7 @@ class BaseRpcTask(celery_app.Task):
         # noinspection PyPep8Naming
         Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
-        for k in extra_fields:
+        for k in list(fields) + list(extra_fields):
             try:
                 descriptor = getattr(model, k)
             except AttributeError:
