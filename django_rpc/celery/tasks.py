@@ -1,11 +1,13 @@
 # coding: utf-8
 
-from django.apps.registry import apps
-from django.db.models import QuerySet, Model
-from django.core.exceptions import FieldDoesNotExist
 import celery
-from django_rpc.celery.app import celery as celery_app
+from django.apps.registry import apps
+from django.core.exceptions import FieldDoesNotExist
+from django.db.models import QuerySet, Model
 from rest_framework import serializers
+
+from django_rpc.celery.app import celery as celery_app
+from django_rpc.models.compat import DJ110
 
 
 class BaseRpcTask(celery_app.Task):
@@ -36,7 +38,10 @@ class BaseRpcTask(celery_app.Task):
         for k in set(fields) | set(extra_fields):
             try:
                 descriptor = getattr(model, k)
-                f = descriptor.field
+                try:
+                    f = descriptor.field
+                except AttributeError:
+                    f = descriptor.related.field
             except AttributeError:
                 try:
                     f = opts.get_field(k)
@@ -48,7 +53,7 @@ class BaseRpcTask(celery_app.Task):
                 if not f.is_relation:
                     attrs[k] = serializers.ReadOnlyField()
                 else:
-                    many = hasattr(descriptor, 'rel')
+                    many = hasattr(descriptor, 'related_manager_cls')
                     model = f.model if many else f.related_model
                     fields = self.get_fields(model)
 

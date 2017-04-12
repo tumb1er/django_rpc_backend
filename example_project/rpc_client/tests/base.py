@@ -11,7 +11,7 @@ from django.utils.timezone import now
 from mock import mock
 
 from django_rpc.celery import codecs, app
-from django_rpc.models.django import DJ110
+from django_rpc.models.compat import DJ110
 
 
 def encode_decode(data):
@@ -89,8 +89,8 @@ class QuerySetTestsMixin(TestCase):
         for real, exp in zip(result, expected):
             self.assertObjectsEqual(real, exp)
 
-    def assertHasSignals(self, *signals):
-        for s in signals:
+    def assertHasSignals(self, *signals_list):
+        for s in signals_list:
             self.assertTrue(self.signals[s])
 
     def setUp(self):

@@ -8,7 +8,6 @@ import pytz
 from django_rpc.celery.client import RpcClient
 from django_rpc.models import utils
 
-
 Trace = namedtuple('Trace', ('method', 'args', 'kwargs'))
 
 
