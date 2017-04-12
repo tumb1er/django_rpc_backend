@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import django
 import six
 from django.conf import settings
 from django.db import models, router
@@ -20,6 +21,12 @@ __all__ = [
 ]
 
 
+DJ111 = django.VERSION >= (1, 11, 0)
+DJ110 = django.VERSION >= (1, 10, 0)
+DJ19 = django.VERSION >= (1, 9, 0)
+DJ18 = django.VERSION >= (1, 8, 0)
+
+
 def rpc_enabled(db):
     return settings.DATABASES[db]['ENGINE'] == defaults.ENGINE
 
@@ -29,12 +36,13 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
     @classmethod
     def init_rpc_meta(mcs, name, bases, attrs):
         meta = attrs.get('Meta')
-        if meta and getattr(meta, 'abstract'):
+        if meta and getattr(meta, 'abstract', False):
             return
         if not meta:
             meta = type('Meta', (), {})
             attrs['Meta'] = meta
-        meta.base_manager_name = 'objects'
+        if DJ110:
+            meta.base_manager_name = 'objects'
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
 
 
@@ -71,7 +79,7 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
             except AttributeError:
                 patched[k] = v
 
-        super().update_model(obj, patched)
+        super(DjangoRpcQuerySet, self).update_model(obj, patched)
 
     @staticmethod
     def _get_fields(obj):
@@ -128,7 +136,7 @@ class DjangoRpcManager(models.manager.Manager, base.RpcManager):
         if rpc_enabled(router.db_for_read(self.model)):
             return self._rpc_queryset_class(
                 model=self.model, using=self._db, hints=self._hints)
-        return super().get_queryset()
+        return super(DjangoRpcManager, self).get_queryset()
 
 
 class DjangoRpcModel(six.with_metaclass(DjangoRpcModelBase,
