@@ -32,7 +32,7 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(NativeCeleryTestCase, cls).setUpClass()
         cls._apply_async_patcher.stop()
         cmd = 'celery worker -c 1 -A django_rpc.celery.app --loglevel=DEBUG'
         cls.celery = Process(target=start_celery, args=[cmd.split(' ')])
@@ -46,7 +46,7 @@ class NativeCeleryTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
     # noinspection PyUnresolvedReferences
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
+        super(NativeCeleryTestCase, cls).tearDownClass()
         cls.celery.terminate()
         cls.rpc_client._app.conf['CELERY_ALWAYS_EAGER'] = cls.eager
 

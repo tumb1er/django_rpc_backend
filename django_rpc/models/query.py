@@ -43,7 +43,7 @@ class ValuesIterable(BaseIterable):
 class DateTimeIterable(BaseIterable):
 
     def __init__(self, queryset, tzinfo=pytz.utc):
-        super().__init__(queryset)
+        super(DateTimeIterable, self).__init__(queryset)
         # FIXME: tzinfo support may be different for different server databases
         # https://docs.djangoproject.com/en/1.10/ref/models/querysets/#datetimes
         self.tzinfo = tzinfo
