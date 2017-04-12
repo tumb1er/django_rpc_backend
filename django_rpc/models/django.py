@@ -38,6 +38,17 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
             meta.base_manager_name = 'objects'
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
 
+    # noinspection PyInitNewSignature
+    def __new__(mcs, name, bases, attrs):
+        new = super(DjangoRpcModelBase, mcs).__new__(mcs, name, bases, attrs)
+        # noinspection PyProtectedMember
+        if not DJ110 and not new._meta.abstract:
+            manager = getattr(new, 'objects')
+            manager = type(manager)()
+            manager.contribute_to_class(new, '_base_manager')
+            setattr(new, '_base_manager', manager)
+        return new
+
 
 class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
 
