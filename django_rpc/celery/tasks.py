@@ -2,6 +2,7 @@
 
 from django.apps.registry import apps
 from django.db.models import QuerySet, Model
+from django.core.exceptions import FieldDoesNotExist
 import celery
 from django_rpc.celery.app import celery as celery_app
 from rest_framework import serializers
@@ -25,16 +26,23 @@ class BaseRpcTask(celery_app.Task):
 
         return serializer_class(instance=qs, many=isinstance(qs, QuerySet)).data
 
+    # noinspection PyProtectedMember
     def get_serializer_class(self, model, fields=None, extra_fields=()):
         fields = fields or self.get_fields(model)
         # noinspection PyPep8Naming
         Meta = type('Meta', (), {'model': model, 'fields': fields})
         attrs = {'Meta': Meta}
+        opts = model._meta
         for k in list(fields) + list(extra_fields):
             try:
                 descriptor = getattr(model, k)
             except AttributeError:
-                attrs[k] = serializers.ReadOnlyField()
+                try:
+                    f = opts.get_field(k)
+                    if f.name != k:
+                        attrs[k] = serializers.ReadOnlyField()
+                except FieldDoesNotExist:
+                    attrs[k] = serializers.ReadOnlyField()
             else:
                 f = descriptor.field
                 if not f.is_relation:
@@ -46,7 +54,7 @@ class BaseRpcTask(celery_app.Task):
 
                     # noinspection PyPep8Naming
                     NestedSerializer = self.get_serializer_class(model, fields)
-                    nested = NestedSerializer(many=many)
+                    nested = NestedSerializer(many=many, required=not f.blank, allow_null=f.null)
                     attrs[k] = nested
         serializer_class = type("Serializer",
                                 (serializers.ModelSerializer,),
