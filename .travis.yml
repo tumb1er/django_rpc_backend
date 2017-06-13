@@ -12,5 +12,5 @@ install:
   #- redis-server
   # - rabbitmq
 script:
-  - DJANGO_SETTINGS_MODULE=example_project.settings_client python example_project/manage.py test rpc_client.tests.celery_tests
+  - DJANGO_SETTINGS_MODULE=example_project.settings_client python example_project/manage.py test example_project.rpc_client.tests.celery_tests
   # - tox
