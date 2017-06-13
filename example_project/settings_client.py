@@ -92,7 +92,7 @@ DATABASES = {
 }
 
 USE_FILE_SQLITE = bool(list(filter(
-    lambda x: 'NativeCeleryTestCase' in x, sys.argv)))
+    lambda x: 'rpc_client.tests.celery_tests' in x, sys.argv)))
 
 if USE_FILE_SQLITE:
     DATABASES['default']['TEST'] = {
