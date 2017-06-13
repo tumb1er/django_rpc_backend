@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='django_rpc_backend',
@@ -15,11 +15,11 @@ setup(
     author='Tumbler',
     author_email='zimbler@gmail.com',
     description='Django RPC database backend',
-    requires=[
+    install_requires=[
         'pytz',
         'celery',
         'django',
         'six',
         'jsonpickle'],
-    test_requres=['mock']
+    tests_require=['mock']
 )

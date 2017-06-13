@@ -4,5 +4,3 @@ django
 six
 jsonpickle
 djangorestframework
-
-mock

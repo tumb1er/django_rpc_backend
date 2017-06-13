@@ -10,6 +10,6 @@ services:
   - rabbitmq
 script:
   - pip install .
-  - pip install -r requirements.txt
+  - pip install -r requirements_test.txt
   - DJANGO_SETTINGS_MODULE=example_project.settings_client python example_project/manage.py test rpc_client.tests.celery_tests
   - tox
