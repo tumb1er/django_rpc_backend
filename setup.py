@@ -20,6 +20,7 @@ setup(
         'celery',
         'django',
         'six',
-        'jsonpickle'],
+        'jsonpickle',
+        'djangorestframework'],
     tests_require=['mock']
 )
