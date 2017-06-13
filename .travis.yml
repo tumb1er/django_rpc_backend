@@ -5,11 +5,12 @@ python:
     - "3.6"
 install:
   - pip install tox-travis
-services:
-  - redis-server
-  - rabbitmq
-script:
   - pip install .
   - pip install -r requirements_test.txt
+  - pip freeze
+# services:
+  #- redis-server
+  # - rabbitmq
+script:
   - DJANGO_SETTINGS_MODULE=example_project.settings_client python example_project/manage.py test rpc_client.tests.celery_tests
-  - tox
+  # - tox
