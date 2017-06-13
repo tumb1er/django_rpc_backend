@@ -33,7 +33,7 @@ class RpcModelBase(type):
         return new
 
     def __call__(cls, *args, **kwargs):
-        obj = super().__call__(*args)
+        obj = super(RpcModelBase, cls).__call__(*args)
         rpc = obj.Rpc
         if not hasattr(obj, rpc.pk_field):
             setattr(obj, rpc.pk_field, None)
@@ -45,6 +45,9 @@ class RpcModelBase(type):
     def init_rpc_meta(name, bases, attrs):
         if not bases:
             return
+        if attrs.get('_deferred'):
+            return
+
         rpc = attrs.get('Rpc')
         assert rpc is not None, S_MUST_DEFINE_RPC_CLASS % name
 

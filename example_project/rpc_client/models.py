@@ -1,3 +1,4 @@
+from datetime import date
 from django.db import models
 from django.utils.timezone import now
 
@@ -20,6 +21,7 @@ class ClientModel(DjangoRpcModel):
     char_field = models.CharField(max_length=32, blank=True)
     int_field = models.IntegerField()
     dt_field = models.DateTimeField(default=now)
+    d_field = models.DateField(default=date.today)
     fk = models.ForeignKey('FKClientModel', null=True, blank=True,
                            related_name='servermodel_set',
                            related_query_name='servermodel')

@@ -29,7 +29,7 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
     fixtures = ['tests.json']
 
     def setUp(self):
-        super().setUp()
+        super(DisabledRpcDjangoTestCase, self).setUp()
         self._patchers = []
 
         p = mock.patch(
@@ -59,7 +59,7 @@ class DisabledRpcDjangoTestCase(base.QuerySetTestsMixin, base.BaseRpcTestCase,
         self.assertIsInstance(qs, models.query.RawQuerySet)
 
     def tearDown(self):
-        super().tearDown()
+        super(DisabledRpcDjangoTestCase, self).tearDown()
         self.assertFalse(self.apply_mock.called)
         for p in self._patchers:
             p.stop()

@@ -83,8 +83,11 @@ class RpcJsonDecoder(json.JSONDecoder):
         r'"py/object": "django\.db\.models\.query_utils\.Q"')
 
     DT_SIGNATURE = re.compile(
-        r'\d+-\d+-\d+T\d+:\d+:\d+(\.\d+)?Z'
-    )
+        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z')
+
+    D_SIGNATURE = re.compile(
+        r'\d{4}-\d{2}-\d{2}')
+
     AGGREGATE_SIGNATURE = re.compile(
         r'"py/object": "django\.db\.models\.aggregates\.'
         r'(Aggregate|Avg|Count|Max|Min|StdDev|Sum|Variance)"')
@@ -121,6 +124,10 @@ class RpcJsonDecoder(json.JSONDecoder):
             return datetime.datetime(*dt.timetuple()[:6],
                                      microsecond=dt.microsecond,
                                      tzinfo=pytz.utc)
+        m = re.match(self.D_SIGNATURE, v)
+        if m:
+            dt = datetime.datetime.strptime(v, '%Y-%m-%d')
+            return dt.date()
         return NotImplemented
 
 

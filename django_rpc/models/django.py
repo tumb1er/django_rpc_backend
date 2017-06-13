@@ -9,8 +9,8 @@ from django.db import models, router
 from django_rpc.celery import defaults
 from django_rpc.celery.client import RpcClient
 from django_rpc.models import base
+from django_rpc.models.compat import DJ110
 from django_rpc.models.query import RpcQuerySet
-
 
 __all__ = [
     'DjangoRpcModelBase',
@@ -29,13 +29,25 @@ class DjangoRpcModelBase(base.RpcModelBase, models.base.ModelBase):
     @classmethod
     def init_rpc_meta(mcs, name, bases, attrs):
         meta = attrs.get('Meta')
-        if meta and getattr(meta, 'abstract'):
+        if meta and getattr(meta, 'abstract', False):
             return
         if not meta:
             meta = type('Meta', (), {})
             attrs['Meta'] = meta
-        meta.base_manager_name = 'objects'
+        if DJ110:
+            meta.base_manager_name = 'objects'
         super(DjangoRpcModelBase, mcs).init_rpc_meta(name, bases, attrs)
+
+    # noinspection PyInitNewSignature
+    def __new__(mcs, name, bases, attrs):
+        new = super(DjangoRpcModelBase, mcs).__new__(mcs, name, bases, attrs)
+        # noinspection PyProtectedMember
+        if not DJ110 and not new._meta.abstract:
+            manager = getattr(new, 'objects')
+            manager = type(manager)()
+            manager.contribute_to_class(new, '_base_manager')
+            setattr(new, '_base_manager', manager)
+        return new
 
 
 class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
@@ -55,14 +67,17 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
         for k, v in data.items():
             try:
                 descriptor = getattr(self.model, k)
-                f = descriptor.field
+                try:
+                    f = descriptor.field
+                except AttributeError:
+                    f = descriptor.related.field
                 if not f.is_relation:
                     patched[k] = v
                 elif hasattr(descriptor, 'related_manager_cls'):
                     manager = descriptor.related_manager_cls(obj)
                     qs = manager.get_queryset()
                     qs._result_cache = [qs.instantiate(i) for i in v]
-                    cache[f.remote_field.related_query_name] = qs
+                    cache[f.rel.related_query_name] = qs
                 else:
                     cache_name = f.get_cache_name()
                     qs = f.related_model.objects.get_queryset()
@@ -71,7 +86,7 @@ class DjangoRpcQuerySet(RpcQuerySet, models.QuerySet):
             except AttributeError:
                 patched[k] = v
 
-        super().update_model(obj, patched)
+        super(DjangoRpcQuerySet, self).update_model(obj, patched)
 
     @staticmethod
     def _get_fields(obj):
@@ -128,7 +143,7 @@ class DjangoRpcManager(models.manager.Manager, base.RpcManager):
         if rpc_enabled(router.db_for_read(self.model)):
             return self._rpc_queryset_class(
                 model=self.model, using=self._db, hints=self._hints)
-        return super().get_queryset()
+        return super(DjangoRpcManager, self).get_queryset()
 
 
 class DjangoRpcModel(six.with_metaclass(DjangoRpcModelBase,
