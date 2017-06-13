@@ -7,7 +7,7 @@ install:
   - pip install tox-travis
   - pip install .
   - pip install -r requirements_test.txt
- services:
+services:
   - redis-server
   - rabbitmq
 script:
