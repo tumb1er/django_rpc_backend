@@ -3,5 +3,6 @@ celery
 django
 six
 jsonpickle
+djangorestframework
 
 mock
