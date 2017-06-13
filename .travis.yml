@@ -7,7 +7,7 @@ install:
   - pip install tox-travis
   - pip install .
   - pip install -r requirements_test.txt
-  - bash -c "echo 'import rpc_client.tests;print 123' | DJANGO_SETTINGS_MODULE=example_project.settings_client example_project/manage.py shell
+  - bash -c "echo 'import rpc_client.tests;print 123' | DJANGO_SETTINGS_MODULE=example_project.settings_client example_project/manage.py shell"
 # services:
   #- redis-server
   # - rabbitmq

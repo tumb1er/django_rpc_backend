@@ -45,12 +45,12 @@ Django
 --------------
 
 - [ ] requirements.txt
-- [ ] setup.py
-- [ ] travis-ci.org
+- [x] setup.py
+- [x] travis-ci.org
 - [ ] readthedocs.org
 - [ ] codecov.io
 - [ ] pypi.org
-- [ ] сетка тестов Py2.7-3.6 / Dj1.8-1.11 / RestFramework 3.x-3.6
+- [x] сетка тестов Py2.7-3.6 / Dj1.8-1.11 / RestFramework 3.x-3.6
 
 FIXME
 -----
