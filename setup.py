@@ -22,5 +22,5 @@ setup(
         'six',
         'jsonpickle',
         'djangorestframework'],
-    tests_require=['mock']
+    tests_require=['mock', 'redis']
 )
