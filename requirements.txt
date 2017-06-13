@@ -1,0 +1,7 @@
+pytz
+celery
+django
+six
+jsonpickle
+
+mock
