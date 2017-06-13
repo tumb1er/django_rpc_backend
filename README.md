@@ -1,5 +1,7 @@
 ## Django RPC database backend
 
+[![Build Status](https://travis-ci.org/tumb1er/django_rpc_backend.svg?branch=master)](https://travis-ci.org/tumb1er/django_rpc_backend)
+
 Предоставляет удаленный доступ к Django-моделям связанного микросервиса через Сelery.
 
 ### Quickstart
